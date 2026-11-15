@@ -240,11 +240,11 @@ export function buildPatient() {
 
   // ============================================================ Foley·소변주머니
   const tubeM = std(0xe7eef1, { transparent: true, opacity: 0.85, roughness: 0.3 });
-  const foleyOk = tube([[0.2, 0.83, 0.08], [0.36, 0.8, 0.12], [0.5, 0.75, 0.2], [0.58, 0.6, 0.34], [0.58, 0.5, 0.5]], 0.011, tubeM, 40);
-  const foleyKink = tube([[0.2, 0.83, 0.08], [0.27, 0.78, 0.1], [0.25, 0.85, 0.115], [0.34, 0.77, 0.13], [0.5, 0.75, 0.2], [0.58, 0.6, 0.34], [0.58, 0.5, 0.5]], 0.011, tubeM, 40);
+  const foleyOk = tube([[0.11, 0.95, 0.12], [0.24, 0.92, 0.15], [0.42, 0.8, 0.22], [0.56, 0.62, 0.34], [0.58, 0.5, 0.5]], 0.011, tubeM, 40);
+  const foleyKink = tube([[0.11, 0.95, 0.12], [0.17, 0.93, 0.14], [0.15, 1.0, 0.16], [0.23, 0.92, 0.18], [0.42, 0.8, 0.22], [0.56, 0.62, 0.34], [0.58, 0.5, 0.5]], 0.011, tubeM, 40);
   bed.add(foleyOk, foleyKink);
   const kinkMark = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.007, 8, 20), std(0xff8a1f, { emissive: 0x663300 }));
-  kinkMark.position.set(0.29, 0.79, 0.11); kinkMark.rotation.y = Math.PI / 2; bed.add(kinkMark);
+  kinkMark.position.set(0.17, 0.95, 0.15); kinkMark.rotation.y = Math.PI / 2; bed.add(kinkMark);
 
   // 소변주머니 (눈금 라벨 + 소변 수위): 간호사가 서 있는 발쪽에서 보이도록 앞면이 +z를 향함
   const bagGroup = new THREE.Group(); bagGroup.position.set(0.58, 0.3, 0.5); bed.add(bagGroup);
@@ -322,7 +322,7 @@ export function buildPatient() {
   // ============================================================ 환시 (환자에게만 보이는 벌레)
   const bugs = new THREE.Group();
   const bugM = std(0x1c1c1c, { transparent: true, opacity: 0.75 });
-  for (let i = 0; i < 9; i++) { const b = ball(0.017, bugM, 1.3, 0.6, 1); b.userData.ph = i * 1.7; bugs.add(b); }
+  for (let i = 0; i < 9; i++) { const b = ball(0.03, bugM, 1.3, 0.6, 1); b.userData.ph = i * 1.7; bugs.add(b); }
   bugs.position.set(1.7, 2.45, -1.05); // root 기준 (월드 x 1.7, y 2.45, z -2.35)
   bugs.visible = false; root.add(bugs);
 
@@ -442,8 +442,7 @@ export function buildPatient() {
     patient.rotation.y = cur.yaw;
     patient.position.set(cur.hx, hipY, cur.hz);
     legs.forEach((l) => { l.knee.rotation.x = cur.knee; });
-    blanket.visible = !edge; sheetFold.visible = !edge; pile.visible = edge;
-    blanket.position.z = 0.02 + (cur.hz - 0.05); sheetFold.position.z = 0.06 + (cur.hz - 0.05);
+    blanket.visible = false; sheetFold.visible = false; pile.visible = false; // 담요는 치웠다 (시연 장면에서 환자·소변줄이 잘 보이도록)
 
     // 팔 움직임: 흥분할수록 크게
     const amp = 0.25 + e * 0.75;

@@ -2,3 +2,49 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #05080d; fon
 canvas { display: block; touch-action: none; cursor: grab; }
 #help { position: fixed; left: 12px; top: 12px; z-index: 5; padding: 8px 12px; border-radius: 10px; background: rgba(8, 18, 34, .78); color: #cfe3ff; font-size: 13px; line-height: 1.5; pointer-events: none; }
 body.in-xr #help { display: none; }
+
+/* ---------------- 시연 영상 모드 ---------------- */
+body.demo #help { display: none; }
+body.demo canvas { cursor: default; }
+#demo { position: fixed; inset: 0; z-index: 8; pointer-events: none; color: #fff; font-family: inherit; }
+#demo[hidden], #demo [hidden] { display: none !important; }
+#d-title { position: absolute; left: 20px; top: 16px; display: flex; gap: 12px; align-items: center; padding: 8px 14px; border-radius: 12px; background: rgba(6, 14, 28, .62); font-size: clamp(13px, 1.25vw, 18px); }
+#d-phase { padding: 3px 10px; border-radius: 999px; background: #1d4f91; font-size: .9em; }
+#d-phase:empty { display: none; }
+#d-emo { position: absolute; left: 20px; top: 64px; display: flex; gap: 10px; align-items: center; padding: 8px 14px; border-radius: 12px; background: rgba(6, 14, 28, .62); font-size: clamp(13px, 1.2vw, 17px); }
+#d-emo .bar { width: clamp(90px, 10vw, 160px); height: 10px; border-radius: 6px; background: rgba(255,255,255,.18); overflow: hidden; }
+#d-emo .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffb347, #ff5a4a); transition: width .8s ease; }
+#d-emo b { min-width: 2.2em; text-align: right; color: #ffd38a; }
+#d-cue { position: absolute; right: 24px; top: 16px; width: min(34vw, 460px); padding: 14px 18px; border-radius: 14px; background: rgba(8, 24, 52, .86); border-left: 6px solid #ffb347; box-shadow: 0 6px 24px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 4px; }
+#d-cue.in { animation: dcue .35s ease-out; }
+@keyframes dcue { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+#d-cue small { color: #ffb347; font-weight: 700; letter-spacing: .02em; font-size: clamp(12px, 1.05vw, 15px); }
+#d-cue b { font-size: clamp(17px, 1.7vw, 24px); }
+#d-cue span { font-size: clamp(13px, 1.2vw, 17px); line-height: 1.5; color: #d8e6ff; }
+#d-sub { position: absolute; left: 50%; bottom: 5.5vh; transform: translateX(-50%); width: min(86vw, 1180px); padding: 12px 22px 14px; border-radius: 16px; background: rgba(4, 10, 20, .8); text-align: left; }
+#d-who { display: inline-block; margin-bottom: 4px; padding: 2px 12px; border-radius: 999px; font-size: clamp(13px, 1.2vw, 17px); font-weight: 700; background: #3b4a5f; }
+#d-sub[data-k=nurse] #d-who { background: #2f7fd6; }
+#d-sub[data-k=patient] #d-who { background: #e0833a; }
+#d-sub[data-k=doctor] #d-who { background: #3aa57a; }
+#d-tag { margin-left: 8px; padding: 2px 10px; border-radius: 999px; background: #7b3fb0; font-size: clamp(12px, 1.05vw, 15px); }
+#d-text { margin: 2px 0 0; font-size: clamp(18px, 2.15vw, 31px); line-height: 1.45; font-weight: 600; }
+#d-sub[data-k=patient] #d-text { color: #ffd2a8; }
+#d-sub[data-k=nurse] #d-text { color: #cfe6ff; }
+#d-sub[data-k=sys] #d-text { color: #c9d3df; font-size: clamp(15px, 1.7vw, 24px); }
+#d-start, #d-end { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(3, 8, 16, .84); pointer-events: auto; }
+#d-end { pointer-events: none; }
+#demo .card { width: min(88vw, 760px); padding: 34px 40px; border-radius: 20px; background: #0d1d38; border: 1px solid #2a4a7c; box-shadow: 0 12px 48px rgba(0,0,0,.5); }
+#demo .card.wide { width: min(92vw, 980px); }
+#demo .card small { color: #ffb347; font-weight: 700; }
+#demo .card h1 { margin: 8px 0 14px; font-size: clamp(22px, 2.6vw, 36px); line-height: 1.3; }
+#demo .card p { margin: 6px 0; font-size: clamp(14px, 1.4vw, 19px); line-height: 1.6; }
+#demo .card .dim { color: #9db3d3; font-size: clamp(12px, 1.15vw, 16px); }
+#demo .card .keys { margin-top: 16px; }
+#d-go { margin-top: 18px; padding: 12px 30px; border: 0; border-radius: 12px; background: #2f7fd6; color: #fff; font: 700 clamp(16px, 1.5vw, 21px) inherit; cursor: pointer; }
+#d-go:disabled { background: #3b4a5f; cursor: default; }
+#d-end ol { margin: 6px 0 12px; padding: 0; list-style: none; counter-reset: n; }
+#d-end li { counter-increment: n; display: grid; grid-template-columns: 2.2em 1fr; gap: 0 4px; margin: 10px 0; }
+#d-end li::before { content: counter(n); grid-row: 1 / 3; align-self: start; width: 1.7em; height: 1.7em; border-radius: 50%; background: #e0833a; color: #fff; text-align: center; line-height: 1.7em; font-weight: 700; font-size: clamp(13px, 1.3vw, 18px); }
+#d-end li b { font-size: clamp(16px, 1.7vw, 23px); color: #ffd38a; }
+#d-end li span { font-size: clamp(13px, 1.3vw, 18px); line-height: 1.5; color: #d8e6ff; }
+body.demo #VRButton{left:auto!important;right:16px;transform:none!important;bottom:16px!important;opacity:.55}

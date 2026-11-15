@@ -6,15 +6,18 @@ import { META } from './scenario-data.js';
 import { buildRoom } from './room.js';
 import { buildPatient } from './patient.js';
 import { createPanels, fmt } from './panels.js';
+import { createDemo } from './demo.js';
 
 const params = new URLSearchParams(location.search);
 const practice = params.get('practice') === '1';
 const debug = params.get('debug') === '1';
 const showHallucination = params.get('hallu') !== '0';
+// 기본은 시연 영상 모드(자동 재생, 메뉴 없음). ?play=1 이면 직접 눌러 수행하는 연습 모드
+const demoMode = params.get('play') !== '1';
 
 // ------------------------------------------------------------------ 상태
 const sc = new Scenario({ practice });
-const ui = { tab: 0, cards: [], transcript: [], form: null, voice: true, toast: null, debug };
+const ui = { tab: 0, cards: [], transcript: [], form: null, voice: params.get('voice') !== '0', toast: null, debug };
 
 // ------------------------------------------------------------------ 3D 기본
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -42,6 +45,7 @@ scene.add(patient.group);
 
 // ------------------------------------------------------------------ 패널
 let app; // 아래에서 정의
+let demo = null; // 시연 영상 모드 컨트롤러
 const panels = createPanels({ get sc() { return sc; }, get ui() { return ui; }, invalidate: () => invalidateAll(), act: (id) => app.act(id), toggleVoice: () => app.toggleVoice(), restart: () => app.restart(), openForm: (f) => app.openForm(f), closeForm: () => app.closeForm(), startSim: () => app.startSim(), submitNuDesc: (s) => app.submitNuDesc(s), submitSBAR: (s) => app.submitSBAR(s), submitReadback: (id) => app.submitReadback(id) });
 
 const nurseEye = new THREE.Vector3(0, 1.5, 0.9);
@@ -55,6 +59,7 @@ panels.transcript.mesh.position.set(0, 2.17, -2.43);
 scene.add(panels.transcript.mesh);
 place(panels.form, 0, 1.5, -0.6);
 panels.form.mesh.visible = false;
+if (demoMode) { panels.menu.mesh.visible = false; panels.transcript.mesh.visible = false; document.body.classList.add('demo'); }
 // 모달 폼은 침대 등에 가려지지 않도록 항상 맨 앞에 그린다
 panels.form.mesh.material.depthTest = false;
 panels.form.mesh.renderOrder = 10;
@@ -83,6 +88,24 @@ function speak(text, who) {
   } catch (e) { /* 일부 XR 브라우저는 TTS 미지원 */ }
 }
 
+function speakAsync(text, who, speedMul = 1) {
+  return new Promise((resolve) => {
+    const clean = text.replace(/\([^)]*\)/g, '').trim();
+    const fallback = (clean.length * 0.28 + 2) * 1000 / speedMul;
+    if (!ui.voice || !clean || !('speechSynthesis' in window)) { resolve(); return; }
+    let done = false; const fin = () => { if (!done) { done = true; resolve(); } };
+    try {
+      const u = new SpeechSynthesisUtterance(clean);
+      u.lang = 'ko-KR'; if (koVoice) u.voice = koVoice;
+      u.pitch = who === 'doctor' ? 1.0 : 0.55;
+      u.rate = (who === 'doctor' ? 1.05 : 0.95 + Math.max(0, sc.emotion - 3) * 0.03) * Math.min(2, speedMul);
+      u.onend = fin; u.onerror = fin;
+      speechSynthesis.speak(u);
+    } catch (e) { fin(); }
+    setTimeout(fin, fallback);
+  });
+}
+
 let audioCtx = null;
 function beep() {
   try {
@@ -99,6 +122,7 @@ function beep() {
 
 // ------------------------------------------------------------------ 앱 동작
 function say(entry) {
+  if (demoMode) { demo.enqueue(entry); return; }
   ui.transcript.push(entry);
   if (ui.transcript.length > 60) ui.transcript.shift();
   if (entry.who === 'patient') { patient.speak(entry.text); speak(entry.text, 'patient'); }
@@ -116,6 +140,7 @@ function addCard(card) {
 function applyEnv() { room.setLight(sc.lightOn); }
 
 app = {
+  say,
   act(id) {
     const r = sc.perform(id);
     if (!r.ok) { toast(r.reason); return; }
@@ -176,7 +201,7 @@ app = {
 };
 // 폼 패널이 app 객체의 메서드를 호출할 수 있도록 노출
 patient.ready.then(() => { const el = document.getElementById('loading'); if (el) el.remove(); });
-window.__sim = { sc, ui, app, camera, rig, panels, patient, look: (y, p) => { yaw = y; pitch = p; } };
+window.__sim = { get demo() { return demo; }, sc, ui, app, camera, rig, panels, patient, look: (y, p) => { yaw = y; pitch = p; } };
 
 // ------------------------------------------------------------------ 입력 (마우스 + VR 컨트롤러)
 const raycaster = new THREE.Raycaster();
@@ -201,6 +226,10 @@ function applyHover(results) {
 // 마우스
 const ndc = new THREE.Vector2();
 let drag = null; let yaw = 0; let pitch = 0;
+if (demoMode) {
+  demo = createDemo({ sc, app, patient, speakAsync, beep, rig, camera, setView: (y, p) => { yaw = y; pitch = p; } });
+  patient.ready.then(() => demo.ready());
+}
 const dom = renderer.domElement;
 function pickMouse(e) {
   const rect = dom.getBoundingClientRect();
@@ -208,9 +237,10 @@ function pickMouse(e) {
   raycaster.setFromCamera(ndc, camera);
   return pickRay(raycaster.ray.origin.clone(), raycaster.ray.direction.clone());
 }
-dom.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, moved: false }; dom.setPointerCapture(e.pointerId); });
+dom.addEventListener('pointerdown', (e) => {
+  if (demoMode) return; drag = { x: e.clientX, y: e.clientY, moved: false }; dom.setPointerCapture(e.pointerId); });
 dom.addEventListener('pointermove', (e) => {
-  if (renderer.xr.isPresenting) return;
+  if (renderer.xr.isPresenting || demoMode) return;
   if (drag) {
     const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) > 6) drag.moved = true;
@@ -225,7 +255,7 @@ dom.addEventListener('pointermove', (e) => {
   dom.style.cursor = r && r.btn ? 'pointer' : drag ? 'grabbing' : 'grab';
 });
 dom.addEventListener('pointerup', (e) => {
-  if (renderer.xr.isPresenting) return;
+  if (renderer.xr.isPresenting || demoMode) return;
   const wasDrag = drag && drag.moved;
   drag = null;
   if (wasDrag) return;
@@ -292,7 +322,8 @@ renderer.setAnimationLoop(() => {
   if (!renderer.xr.isPresenting) { camera.rotation.y = yaw; camera.rotation.x = pitch; }
 
   // 시나리오 시간
-  for (const ev of sc.tick(dt)) {
+  if (demo) demo.update(dt);
+  for (const ev of (demoMode ? [] : sc.tick(dt))) {
     if (ev.type === 'alert') { say({ who: 'system', text: ev.text }); toast(ev.text); beep(); }
     if (ev.type === 'line') say(ev.line);
     if (ev.type === 'timeup') { say({ who: 'system', text: '러닝 시간(10분)이 끝났습니다.' }); app.finishSim(); }
@@ -326,5 +357,5 @@ renderer.setAnimationLoop(() => {
 });
 
 // 시작 화면
-app.openForm({ type: 'intro' });
+if (!demoMode) app.openForm({ type: 'intro' });
 void fmt;
