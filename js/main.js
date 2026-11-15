@@ -52,7 +52,7 @@ function place(panel, x, y, z, look = nurseEye) {
 }
 place(panels.menu, -0.98, 1.42, -0.45);
 place(panels.status, 0.98, 1.42, -0.45);
-panels.transcript.mesh.position.set(0, 2.1, -2.43);
+panels.transcript.mesh.position.set(0, 2.17, -2.43);
 scene.add(panels.transcript.mesh);
 place(panels.form, 0, 1.5, -0.6);
 panels.form.mesh.visible = false;
@@ -171,7 +171,7 @@ app = {
   },
 };
 // 폼 패널이 app 객체의 메서드를 호출할 수 있도록 노출
-window.__sim = { sc, ui, app, camera, rig, panels };
+window.__sim = { sc, ui, app, camera, rig, panels, look: (y, p) => { yaw = y; pitch = p; } };
 
 // ------------------------------------------------------------------ 입력 (마우스 + VR 컨트롤러)
 const raycaster = new THREE.Raycaster();

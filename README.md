@@ -50,6 +50,12 @@ URL 파라미터: `?practice=1` 연습 모드(시간 제한 없음) · `?debug=1
 5. **“10분 시점” 대사** — 9분 경과 시점으로 해석했습니다(`META.idleLineAtSec`).
 6. 정서 강도 증감폭(수행별 −0.5~−2, 오답 +1.5~+2)은 연출용 값입니다.
 
+## 환자·침대 모델
+
+외부 3D 파일 없이 코드로 만든 모델입니다(환자복 무늬, 얼굴·손, 등받이가 올라가는 병원 침대, 난간, 이불 주름, 수액 폴대와 펌프 표시창, 눈금이 있는 소변주머니).
+상황에 따라 바뀝니다: 출혈→거즈/필름, 수액 펌프 `40 mL/h`→`STOPPED`, Foley 꺾임→소변 배출(주머니 수위 상승), 침대 높이·난간, 환자 자세(반좌위 → 누움 / 침대 끝에 앉음).
+더 사실적인 인체 모델이 필요하면 glTF(.glb)를 구해 `js/patient.js`의 환자 부분을 교체하세요.
+
 ## 내가 만든 방으로 바꾸기
 
 `js/room.js`의 `buildRoom()`은 임시 병실입니다. 직접 만든 방(glTF 등)으로 바꾸려면 같은 형태의 객체를 돌려주면 됩니다.
@@ -69,10 +75,10 @@ js/scenario.js        시나리오 엔진·채점 (three.js 무관, node로 테�
 js/main.js            WebXR 진입점, 입력(마우스/컨트롤러), 루프
 js/panels.js          패널 4종(메뉴/상황 정보/자막/폼)
 js/ui.js              캔버스 → 3D 패널 공통 코드
-js/patient.js         침대·환자·수액·Foley·환시 연출
+js/patient.js         병원 침대(등받이·난간)·환자·수액 폴대/펌프·Foley/소변주머니·환시 연출
 js/room.js            임시 병실
 tests/scenario.test.mjs  엔진 테스트 (node tests/scenario.test.mjs)
-vendor/three/         three.js r160, VRButton
+vendor/three/         three.js r160, VRButton, RoundedBoxGeometry
 ```
 
 ## 테스트

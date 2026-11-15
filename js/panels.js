@@ -107,7 +107,7 @@ export function createPanels(app) {
 
   // ---------------------------------------------------------------- 자막
   const transcript = new Panel({
-    name: 'transcript', width: 3.0, height: 1.1, px: 1600,
+    name: 'transcript', width: 3.0, height: 0.95, px: 1600,
     draw(ctx, p) {
       p.frame(ctx);
       const font = `bold 40px ${FONT}`;
