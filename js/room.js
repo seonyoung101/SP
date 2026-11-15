@@ -1,6 +1,7 @@
 // 임시 병실 — 직접 만든 방(glTF 등)이 있으면 buildRoom()만 바꿔 끼우면 됩니다.
 // 좌표 규칙: 간호사 시작 위치 (0, 0, 0.9)에서 -z 방향을 봄, 침대 머리는 -z 벽, 환자 오른쪽 = -x.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 export const ROOM = { w: 4.6, d: 5.0, h: 2.7, zMin: -2.5, zMax: 2.5 };
 
@@ -40,9 +41,85 @@ export function buildRoom() {
   g.add(box(0.5, 0.75, 0.45, mat(0xc9b79a), 0.75, 0.375, -2.05)); // 협탁
   g.add(box(0.5, 0.03, 0.45, mat(0xe8dcc4), 0.75, 0.765, -2.05));
 
-  // 손 소독제·세면대
-  g.add(box(0.7, 0.85, 0.5, mat(0xd8dfe0), -1.9, 0.425, 1.9));
-  g.add(box(0.12, 0.2, 0.08, mat(0x3a8dde), -1.9, 1.2, 2.2));
+  // 손 위생 코너 (뒤 벽, 왼쪽): GLB가 로드되기 전/실패 시에는 단순 상자로 대체
+  const station = new THREE.Group(); station.name = 'handStation'; g.add(station);
+  const stationFallback = new THREE.Group(); station.add(stationFallback);
+  stationFallback.add(box(0.6, 0.85, 0.4, mat(0xd8dfe0), -1.6, 0.425, 2.28));
+  stationFallback.add(box(0.1, 0.2, 0.1, mat(0x3a8dde), -1.4, 1.3, 2.44));
+
+  // 침상 머리 벽 패널: 콘센트 · 조명 · 호출 · 산소 · 흡인
+  {
+    const W = 1280, H = 220;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const c = cv.getContext('2d');
+    const rr = (x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, h, r); };
+    const grad = c.createLinearGradient(0, 0, 0, H); grad.addColorStop(0, '#f6f8f8'); grad.addColorStop(1, '#e3e8e9');
+    c.fillStyle = grad; c.fillRect(0, 0, W, H);
+    c.fillStyle = '#c9d0d2'; c.fillRect(0, 0, W, 6); c.fillRect(0, H - 8, W, 8);
+    const plug = (cx) => {
+      c.fillStyle = '#d4dadc'; rr(cx - 42, 50, 84, 84, 14); c.fill();
+      c.strokeStyle = '#b9c1c3'; c.lineWidth = 3; c.stroke();
+      c.fillStyle = '#eef1f1'; c.beginPath(); c.arc(cx, 92, 31, 0, 7); c.fill();
+      c.fillStyle = '#333'; c.beginPath(); c.arc(cx - 10, 92, 5, 0, 7); c.arc(cx + 10, 92, 5, 0, 7); c.fill();
+    };
+    [76, 168, 260, 352].forEach(plug);
+    c.fillStyle = '#6b7476'; c.font = 'bold 20px sans-serif'; c.textAlign = 'center';
+    c.fillText('220V', 214, 170);
+    // 조명 스위치
+    c.fillStyle = '#cfd6d8'; rr(458, 50, 92, 84, 10); c.fill();
+    [470, 506].forEach((x) => { c.fillStyle = '#f7f9f9'; rr(x, 58, 32, 68, 6); c.fill(); c.strokeStyle = '#aab3b5'; c.lineWidth = 2; c.stroke(); });
+    c.fillStyle = '#6b7476'; c.fillText('조명', 504, 170);
+    // NURSE CALL
+    c.fillStyle = '#e1e6e7'; rr(594, 50, 84, 84, 14); c.fill(); c.strokeStyle = '#b9c1c3'; c.lineWidth = 3; c.stroke();
+    c.fillStyle = '#a31f1f'; c.beginPath(); c.arc(636, 92, 25, 0, 7); c.fill();
+    c.fillStyle = '#d65a5a'; c.beginPath(); c.arc(628, 84, 8, 0, 7); c.fill();
+    c.fillStyle = '#6b7476'; c.fillText('NURSE CALL', 636, 170);
+    // OXYGEN
+    c.fillStyle = '#1f8a4d'; rr(758, 24, 152, 30, 4); c.fill();
+    c.fillStyle = '#fff'; c.font = 'bold 20px sans-serif'; c.fillText('OXYGEN · O₂', 834, 47);
+    c.fillStyle = '#2c3b35'; c.beginPath(); c.arc(834, 100, 36, 0, 7); c.fill();
+    c.fillStyle = '#1c8a4d'; c.beginPath(); c.arc(834, 100, 29, 0, 7); c.fill();
+    c.fillStyle = '#1a2a22'; c.beginPath(); c.arc(834, 100, 12, 0, 7); c.fill();
+    // SUCTION
+    c.fillStyle = '#f2b400'; rr(960, 24, 126, 30, 4); c.fill();
+    c.fillStyle = '#5a4300'; c.font = 'bold 20px sans-serif'; c.fillText('SUCTION', 1023, 47);
+    c.fillStyle = '#4a3a10'; c.beginPath(); c.arc(1023, 100, 36, 0, 7); c.fill();
+    c.fillStyle = '#d29d00'; c.beginPath(); c.arc(1023, 100, 29, 0, 7); c.fill();
+    c.fillStyle = '#3a2d08'; c.beginPath(); c.arc(1023, 100, 12, 0, 7); c.fill();
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const PW = 1.3, PH = PW * H / W;
+    const body = box(PW, PH, 0.04, mat(0xdfe5e6, { roughness: 0.6 }), 0, 1.55, -d / 2 + 0.045);
+    g.add(body);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0 }));
+    face.position.set(0, 1.55, -d / 2 + 0.0655);
+    g.add(face);
+  }
+
+  // GLB 세면 코너 로드 (뒤 벽 z = +2.5, 앞(방 안쪽)은 -z)
+  const loadFixtures = async () => {
+    const base = new URL('../assets/', import.meta.url);
+    const L = new GLTFLoader();
+    const get = async (n) => {
+      const gl = await L.loadAsync(new URL(n, base).href);
+      gl.scene.traverse((o) => { if (o.isMesh) { const m = o.material; m.metalness = Math.min(m.metalness || 0, 0.25); m.metalnessMap = null; m.roughness = Math.max(m.roughness ?? 0.6, 0.45); m.needsUpdate = true; } });
+      return gl.scene;
+    };
+    const place = (obj, scale, x, y, z, ry) => { obj.scale.setScalar(scale); obj.position.set(x, y, z); obj.rotation.y = ry; station.add(obj); };
+    try {
+      const [sink, towel, san, soap] = await Promise.all([get('sink.glb'), get('towel.glb'), get('sanitizer.glb'), get('soap.glb')]);
+      const wall = d / 2 - 0.025; // 벽 안쪽 면 z
+      // 세면대: 긴 변이 벽과 나란하도록 y축 90° 회전(수전은 오른쪽 끝)
+      const sS = 0.30; // 폭 약 0.57 m
+      place(sink, sS, -1.55, 0.86 - 0.57 * sS, wall - 1.07 * sS / 2 - 0.01, Math.PI / 2);
+      // 페이퍼타월, 손소독제: 세면대 위 벽
+      place(towel, 0.2, -1.88, 1.42, wall - 0.59 * 0.2 / 2, Math.PI);
+      place(san, 0.13, -1.55, 1.30, wall - 1.27 * 0.13 / 2, Math.PI);
+      // 손 소독 비누 (세면대 가장자리)
+      place(soap, 0.115, -1.30, 0.86 + 0.95 * 0.115, wall - 0.05, Math.PI);
+      stationFallback.visible = false;
+    } catch (e) { console.warn('세면 코너 GLB 로드 실패(기본 상자로 대체):', e); }
+  };
+  const fixturesReady = loadFixtures();
 
   // 시계 (캔버스 텍스처)
   const clockCanvas = document.createElement('canvas');
@@ -90,5 +167,5 @@ export function buildRoom() {
     lampMesh.material.emissive.setScalar(lit ? 0.9 : 0.1);
   }
 
-  return { group: g, setLight, setClock, update, bounds: ROOM };
+  return { group: g, setLight, setClock, update, bounds: ROOM, ready: fixturesReady };
 }

@@ -200,7 +200,7 @@ app = {
   },
 };
 // 폼 패널이 app 객체의 메서드를 호출할 수 있도록 노출
-patient.ready.then(() => { const el = document.getElementById('loading'); if (el) el.remove(); });
+Promise.all([patient.ready, room.ready]).then(() => { const el = document.getElementById('loading'); if (el) el.remove(); });
 window.__sim = { get demo() { return demo; }, sc, ui, app, camera, rig, panels, patient, look: (y, p) => { yaw = y; pitch = p; } };
 
 // ------------------------------------------------------------------ 입력 (마우스 + VR 컨트롤러)
@@ -228,7 +228,7 @@ const ndc = new THREE.Vector2();
 let drag = null; let yaw = 0; let pitch = 0;
 if (demoMode) {
   demo = createDemo({ sc, app, patient, speakAsync, beep, rig, camera, setView: (y, p) => { yaw = y; pitch = p; } });
-  patient.ready.then(() => demo.ready());
+  Promise.all([patient.ready, room.ready]).then(() => demo.ready());
 }
 const dom = renderer.domElement;
 function pickMouse(e) {

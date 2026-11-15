@@ -105,7 +105,7 @@ js/patient.js         GLB 로딩, 환자 자세·동작 구동, 난간·이불·
 js/man.js             남편 GLB에 뼈대·스키닝·환자복 셰이더 적용
 assets/               man / bed / pole / bag .glb (최적화본)
 tools/                GLB 최적화 스크립트 (@gltf-transform, meshoptimizer, sharp 필요)
-js/room.js            임시 병실
+js/room.js            임시 병실 + 침상 머리 벽 패널(콘센트·호출·산소·흡인) + 손 위생 코너(세면대·손소독제·페이퍼타월·비누 GLB)
 tests/scenario.test.mjs  엔진 테스트 (node tests/scenario.test.mjs)
 vendor/three/         three.js r160, VRButton, RoundedBoxGeometry, GLTFLoader
 ```
