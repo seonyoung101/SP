@@ -3,6 +3,8 @@
 // 환자 좌표계: +z = 얼굴 방향, +y = 머리 쪽, 환자의 오른쪽 = -x (간호사 기준 왼쪽).
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadMan } from './man.js';
 
 const std = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, metalness: 0, ...o });
 const rbox = (w, h, d, mat, r = 0.02) => new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 3, r), mat);
@@ -56,19 +58,19 @@ function tube(points, radius, mat, seg) { return new THREE.Mesh(tubeGeo(points, 
 
 // 이불: 다리 모양을 따라 주름·늘어짐이 있는 높이장 메쉬
 function buildBlanket(mat) {
-  const W = 1.14, L = 1.12;
+  const W = 1.14, L = 0.98;
   const geo = new THREE.PlaneGeometry(W, L, 60, 60);
   geo.rotateX(-Math.PI / 2);
   const p = geo.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i); const zz = p.getZ(i) + L / 2; const ax = Math.abs(x);
     const mound = Math.exp(-(((ax - 0.095) / 0.075) ** 2));
-    const feet = 1 + 0.5 * Math.exp(-(((zz - 0.9) / 0.07) ** 2));
-    let h = 0.072 + 0.085 * mound * (1 - 0.18 * zz) * feet * smooth(0.0, 0.2, zz);
-    h += 0.07 * (1 - smooth(0, 0.16, zz)); // 골반 부근은 높게
+    const feet = 1 + 0.5 * Math.exp(-(((zz - 0.8) / 0.07) ** 2));
+    let h = 0.13 + 0.14 * mound * (1 - 0.1 * zz) * feet * smooth(0.0, 0.2, zz);
+    h += 0.1 * (1 - smooth(0, 0.16, zz)); // 골반 부근은 높게
     h += 0.006 * Math.sin(zz * 38 + ax * 22) + 0.004 * Math.sin(x * 33 + zz * 9);
     h -= 0.32 * smooth(0.40, 0.57, ax); // 옆으로 늘어짐
-    h -= 0.30 * smooth(0.92, 1.1, zz); // 발쪽으로 늘어짐
+    h -= 0.30 * smooth(0.80, 0.97, zz); // 발쪽으로 늘어짐
     p.setY(i, h);
   }
   geo.computeVertexNormals();
@@ -96,31 +98,32 @@ export function buildPatient() {
 
   // ============================================================ 침대
   const bed = new THREE.Group(); root.add(bed);
+  const bedHW = new THREE.Group(); bed.add(bedHW); // GLB 병상이 로드되면 숨기는 절차적 병상 부품
 
   // 하부 프레임·바퀴
   for (const sx of [-1, 1]) {
-    const beam = rbox(0.06, 0.06, 1.55, metal, 0.015); beam.position.set(sx * 0.34, 0.16, 0); bed.add(beam);
+    const beam = rbox(0.06, 0.06, 1.55, metal, 0.015); beam.position.set(sx * 0.34, 0.16, 0); bedHW.add(beam);
     for (const sz of [-1, 1]) {
       const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.04, 16), darkM);
-      wheel.rotation.z = Math.PI / 2; wheel.position.set(sx * 0.34, 0.05, sz * 0.7); bed.add(wheel);
-      const fork = rbox(0.05, 0.07, 0.05, metal, 0.01); fork.position.set(sx * 0.34, 0.1, sz * 0.7); bed.add(fork);
+      wheel.rotation.z = Math.PI / 2; wheel.position.set(sx * 0.34, 0.05, sz * 0.7); bedHW.add(wheel);
+      const fork = rbox(0.05, 0.07, 0.05, metal, 0.01); fork.position.set(sx * 0.34, 0.1, sz * 0.7); bedHW.add(fork);
     }
   }
-  const cross = rbox(0.74, 0.05, 0.08, metal, 0.01); cross.position.set(0, 0.16, 0); bed.add(cross);
-  const column = rbox(0.2, 0.36, 0.2, std(0x7f8b93, { metalness: 0.4, roughness: 0.5 }), 0.03); column.position.set(0, 0.34, 0); bed.add(column);
-  const deck = rbox(0.94, 0.05, 2.05, std(0x8d98a0, { metalness: 0.4, roughness: 0.5 }), 0.012); deck.position.set(0, 0.56, 0); bed.add(deck);
+  const cross = rbox(0.74, 0.05, 0.08, metal, 0.01); cross.position.set(0, 0.16, 0); bedHW.add(cross);
+  const column = rbox(0.2, 0.36, 0.2, std(0x7f8b93, { metalness: 0.4, roughness: 0.5 }), 0.03); column.position.set(0, 0.34, 0); bedHW.add(column);
+  const deck = rbox(0.94, 0.05, 2.05, std(0x8d98a0, { metalness: 0.4, roughness: 0.5 }), 0.012); deck.position.set(0, 0.56, 0); bedHW.add(deck);
 
   // 머리·발 보드 (움직이지 않음)
-  const hbOuter = rbox(0.98, 0.66, 0.05, wood, 0.015); hbOuter.position.set(0, 0.92, -1.06); bed.add(hbOuter);
-  const hbInner = rbox(0.84, 0.5, 0.058, woodInner, 0.012); hbInner.position.set(0, 0.92, -1.06); bed.add(hbInner);
-  const fbOuter = rbox(0.98, 0.42, 0.05, wood, 0.015); fbOuter.position.set(0, 0.8, 1.06); bed.add(fbOuter);
-  const fbInner = rbox(0.84, 0.28, 0.058, woodInner, 0.012); fbInner.position.set(0, 0.8, 1.06); bed.add(fbInner);
-  const control = rbox(0.18, 0.04, 0.07, plastic, 0.01); control.position.set(0.3, 1.02, 1.06); bed.add(control);
+  const hbOuter = rbox(0.98, 0.66, 0.05, wood, 0.015); hbOuter.position.set(0, 0.92, -1.06); bedHW.add(hbOuter);
+  const hbInner = rbox(0.84, 0.5, 0.058, woodInner, 0.012); hbInner.position.set(0, 0.92, -1.06); bedHW.add(hbInner);
+  const fbOuter = rbox(0.98, 0.42, 0.05, wood, 0.015); fbOuter.position.set(0, 0.8, 1.06); bedHW.add(fbOuter);
+  const fbInner = rbox(0.84, 0.28, 0.058, woodInner, 0.012); fbInner.position.set(0, 0.8, 1.06); bedHW.add(fbInner);
+  const control = rbox(0.18, 0.04, 0.07, plastic, 0.01); control.position.set(0.3, 1.02, 1.06); bedHW.add(control);
 
   // 매트리스: 다리 쪽(고정) + 등받이(회전)
   const mattM = std(0xdce8ee, { roughness: 0.55 });
-  const legMattress = rbox(0.9, 0.16, 1.06, mattM, 0.05); legMattress.position.set(0, 0.65, 0.53); bed.add(legMattress);
-  const backDeck = new THREE.Group(); backDeck.position.set(0, 0.65, 0); bed.add(backDeck);
+  const legMattress = rbox(0.9, 0.16, 1.06, mattM, 0.05); legMattress.position.set(0, 0.65, 0.53); bedHW.add(legMattress);
+  const backDeck = new THREE.Group(); backDeck.position.set(0, 0.65, 0); bedHW.add(backDeck);
   const backMattress = rbox(0.9, 0.16, 1.0, mattM, 0.05); backMattress.position.set(0, 0, -0.5); backDeck.add(backMattress);
   const pillow = rbox(0.44, 0.11, 0.3, std(0xffffff, { roughness: 0.95 }), 0.05); pillow.position.set(0, 0.12, -0.86); backDeck.add(pillow);
   const sheetFold = rbox(0.86, 0.035, 0.09, std(0xffffff, { roughness: 0.95 }), 0.015); sheetFold.position.set(0, MATTRESS_TOP + 0.235, 0.06); bed.add(sheetFold);
@@ -262,15 +265,16 @@ export function buildPatient() {
 
   // ============================================================ 수액 폴대·펌프
   const pole = new THREE.Group(); pole.position.set(-0.86, 0, 0.1); root.add(pole);
-  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 1.85, 12), metal); stand.position.y = 0.95; pole.add(stand);
+  const poleHW = new THREE.Group(); pole.add(poleHW); // GLB 폴대·수액백이 로드되면 숨기는 절차적 부품
+  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 1.85, 12), metal); stand.position.y = 0.95; poleHW.add(stand);
   for (let i = 0; i < 5; i++) {
-    const arm = new THREE.Group(); arm.rotation.y = (i / 5) * Math.PI * 2; pole.add(arm);
+    const arm = new THREE.Group(); arm.rotation.y = (i / 5) * Math.PI * 2; poleHW.add(arm);
     const leg = rbox(0.28, 0.025, 0.04, metal, 0.01); leg.position.set(0.14, 0.05, 0); arm.add(leg);
     const w = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.025, 12), darkM); w.rotation.x = Math.PI / 2; w.position.set(0.27, 0.03, 0); arm.add(w);
   }
-  const hookBar = rbox(0.34, 0.02, 0.02, metal, 0.008); hookBar.position.y = 1.86; pole.add(hookBar);
+  const hookBar = rbox(0.34, 0.02, 0.02, metal, 0.008); hookBar.position.y = 1.86; poleHW.add(hookBar);
   function ivBag(x, w, h, color) {
-    const g = new THREE.Group(); g.position.set(x, 1.86 - h / 2 - 0.04, 0.0); pole.add(g);
+    const g = new THREE.Group(); g.position.set(x, 1.86 - h / 2 - 0.04, 0.0); poleHW.add(g);
     g.add(rbox(w, h, 0.035, std(0xeaf4fb, { transparent: true, opacity: 0.55, roughness: 0.15 }), 0.012));
     const fluid = rbox(w * 0.86, h * 0.78, 0.028, std(color, { transparent: true, opacity: 0.8, roughness: 0.2 }), 0.01); fluid.position.y = -h * 0.06; g.add(fluid);
     const label = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.7, h * 0.22), new THREE.MeshBasicMaterial({ color: 0xffffff })); label.position.set(0, h * 0.22, 0.019); g.add(label);
@@ -278,8 +282,9 @@ export function buildPatient() {
   ivBag(-0.08, 0.13, 0.24, 0xcfe8ff); // NS
   ivBag(0.09, 0.1, 0.17, 0xfff3c4); // ceftriaxone
   const chamber = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.08, 12), std(0xdff0ff, { transparent: true, opacity: 0.5, roughness: 0.1 }));
-  chamber.position.set(-0.08, 1.5, 0.0); pole.add(chamber);
+  chamber.position.set(-0.08, 1.5, 0.0); poleHW.add(chamber);
   const chamberDrop = ball(0.006, std(0xbfe3ff, { roughness: 0.1 })); pole.add(chamberDrop);
+  const dropAt = { x: -0.08, y: 1.52 };
   // 펌프
   const pump = new THREE.Group(); pump.position.set(0, 1.18, 0.03); pole.add(pump);
   pump.add(rbox(0.15, 0.2, 0.1, std(0xdfe5e8, { roughness: 0.5 }), 0.015));
@@ -324,14 +329,92 @@ export function buildPatient() {
   // ============================================================ 상태
   let talk = 0; let blink = 0; let nextBlink = 2;
   let bedY = 0; const railY = [0, 0];
-  const cur = { a: 0.75, torso: -0.82, yaw: 0, knee: 0, hx: 0, hz: 0.05 };
+  const cur = { a: 0.75, torso: -0.82, yaw: 0, knee: 0, hx: 0, hz: -0.15 };
   const T = {
-    half: { a: 0.75, torso: -(Math.PI / 2 - 0.75), yaw: 0, knee: 0, hx: 0, hz: 0.05 },
-    lying: { a: 0.12, torso: -(Math.PI / 2 - 0.12), yaw: 0, knee: 0, hx: 0, hz: 0.05 },
+    half: { a: 0.75, torso: -(Math.PI / 2 - 0.75), yaw: 0, knee: 0, hx: 0, hz: -0.15 },
+    lying: { a: 0.12, torso: -(Math.PI / 2 - 0.12), yaw: 0, knee: 0, hx: 0, hz: -0.02 },
     edge: { a: 0.4, torso: -0.03, yaw: Math.PI / 2, knee: Math.PI / 2, hx: 0.2, hz: 0.4 },
   };
   const state = { time: 0, frame: 0 };
-  const hipY = MATTRESS_TOP + 0.115;
+  let hipY = MATTRESS_TOP + 0.115;
+
+  // ============================================================ GLB 에셋 (로드되면 절차적 모델을 대체)
+  const ASSET_URL = new URL('../assets/', import.meta.url);
+  const qs = new URLSearchParams(location.search);
+  let man = null; let manGroup = null; let backrest = null; let glbBags = false;
+  const HQ = (side) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side > 0 ? -Math.PI / 2 : Math.PI / 2); // 팔을 아래로 늘어뜨리는 회전
+  const qSh = new THREE.Quaternion(); const qEl = new THREE.Quaternion(); const eul = new THREE.Euler();
+  const handLoader = new GLTFLoader();
+  // 환경맵이 없으므로 금속성은 끄고(검게 보임) 텍스처 질감만 쓴다
+  const matte = (scene) => scene.traverse((o) => { if (o.isMesh) { const m = o.material; m.metalness = 0; m.metalnessMap = null; m.roughness = 0.75; m.needsUpdate = true; } });
+  const loadGLB = (name) => handLoader.loadAsync(new URL(name, ASSET_URL).href).then((g) => { matte(g.scene); return g; });
+
+  async function upgrade() {
+    const tasks = [];
+    // 병상
+    tasks.push(loadGLB('bed.glb').then((g) => {
+      const m = g.scene; m.scale.setScalar(1.06); m.rotation.y = Math.PI / 2; m.position.y = 0.53;
+      bed.add(m); bedHW.visible = false;
+      backrest = new THREE.Group(); backrest.visible = false; bed.add(backrest);
+      const wedge = rbox(0.72, 0.66, 0.1, std(0xdfe2ee, { roughness: 0.75 }), 0.04); wedge.position.set(0, 0.31, -0.215); backrest.add(wedge);
+    }));
+    // 수액 폴대 + 수액백
+    tasks.push(Promise.all([loadGLB('pole.glb'), loadGLB('bag.glb')]).then(([pg, bg]) => {
+      pg.scene.position.y = 0.951; pole.add(pg.scene); poleHW.visible = false;
+      glbBags = true;
+      const plasticTube = std(0xe9f3f7, { transparent: true, opacity: 0.8, roughness: 0.25 });
+      pump.position.set(0, 0.95, 0.075);
+      pumpOut.set(pole.position.x, 0.85, pole.position.z + 0.075);
+      const hookY = 1.79;
+      [[-0.257, 0.5], [0.257, 0.4]].forEach(([x, sc], i) => {
+        const b = bg.scene.clone(true); b.scale.setScalar(sc);
+        const y = hookY - 0.935 * sc + 0.012; b.position.set(x, y, 0); pole.add(b);
+        const endY = y - 0.49 * sc;
+        const t = tube([[x, endY, 0], [x * 0.55, endY - 0.06, 0.03], [x * 0.12, 1.12, 0.06], [0, 1.06, 0.075]], 0.0065, plasticTube, 24); pole.add(t);
+        if (i === 0) { dropAt.x = x; dropAt.y = y + 0.06; }
+      });
+      lastEnd.set(1e9, 0, 0);
+    }));
+    // 환자 (남편 모델)
+    tasks.push(loadMan(new URL('man.glb', ASSET_URL).href, { gown: qs.get('clothes') !== '1' }).then((m) => {
+      man = m; manGroup = new THREE.Group(); manGroup.scale.setScalar(0.9); manGroup.add(m.mesh); bed.add(manGroup);
+      patient.visible = false; hipY = MATTRESS_TOP + 0.135;
+      // 정맥주사 부위: 오른 손등 (소매가 아래팔을 덮고 있어서)
+      const hf = new THREE.Group(); hf.position.set(-0.235, 0, 0); hf.quaternion.copy(HQ(+1)); m.bones.rElbow.add(hf);
+      const site = new THREE.Group(); site.position.set(0, -0.085, 0.036); site.scale.setScalar(0.7); hf.add(site);
+      const put = (o, x, y, z) => { o.position.set(x, y, z); site.add(o); };
+      put(blood, 0, 0, 0); put(smear, 0.012, -0.035, -0.004); put(gauze, 0, 0, 0.006); put(tape, 0, 0, 0.007);
+      put(film, 0, -0.015, 0.006); put(hub, 0, -0.025, 0.02); put(ivPort, 0, -0.025, 0.035);
+    }));
+    const res = await Promise.allSettled(tasks);
+    res.forEach((r) => { if (r.status === 'rejected') console.warn('GLB 로드 실패:', r.reason); });
+    return { man: !!man, bed: !!backrest, bags: glbBags };
+  }
+  const ready = upgrade();
+
+  function driveMan(dt, s, k) {
+    const B = man.bones;
+    manGroup.position.set(cur.hx, hipY, cur.hz); manGroup.rotation.y = cur.yaw;
+    B.pelvis.rotation.set(-Math.PI / 2, 0, 0);
+    const bend = (cur.torso + Math.PI / 2) / 2;
+    B.spine1.rotation.set(bend, 0, 0); B.spine2.rotation.set(bend, 0, torsoPivot.rotation.z);
+    const tilt = 0.3 * Math.min(1, Math.max(0, (cur.a - 0.12) / 0.63));
+    B.neck.rotation.set(tilt * 0.5, 0, 0);
+    B.head.rotation.set(head.rotation.x + tilt * 0.5, head.rotation.y, 0);
+    B.jaw.rotation.set(jaw.rotation.x * 0.15, 0, 0);
+    for (const [side, arm, sh, el] of [[-1, rArm, B.rShoulder, B.rElbow], [+1, lArm, B.lShoulder, B.lElbow]]) {
+      const h = HQ(side); // 팔을 아래로 늘어뜨리는 기준 회전
+      eul.set(arm.shoulder.rotation.x, 0, arm.shoulder.rotation.z);
+      sh.quaternion.setFromEuler(eul).multiply(h);
+      eul.set(arm.elbow.rotation.x, 0, 0);
+      qEl.setFromEuler(eul); el.quaternion.copy(h).invert().multiply(qEl).multiply(h);
+    }
+    B.lKnee.rotation.set(cur.knee, 0, 0); B.rKnee.rotation.set(cur.knee, 0, 0);
+    if (backrest) {
+      backrest.visible = s.posture !== 'edge' && cur.a > 0.3;
+      backrest.position.copy(manGroup.position); backrest.rotation.set(cur.torso, 0, 0);
+    }
+  }
 
   function speak(text) { talk = Math.min(8, 0.5 + text.length * 0.085); }
 
@@ -360,6 +443,7 @@ export function buildPatient() {
     patient.position.set(cur.hx, hipY, cur.hz);
     legs.forEach((l) => { l.knee.rotation.x = cur.knee; });
     blanket.visible = !edge; sheetFold.visible = !edge; pile.visible = edge;
+    blanket.position.z = 0.02 + (cur.hz - 0.05); sheetFold.position.z = 0.06 + (cur.hz - 0.05);
 
     // 팔 움직임: 흥분할수록 크게
     const amp = 0.25 + e * 0.75;
@@ -385,6 +469,8 @@ export function buildPatient() {
     if (nextBlink <= 0) { blink = 0.12; nextBlink = 1.5 + Math.random() * 3; }
     lids.forEach((l) => { l.scale.y = blink > 0 ? 1.5 : 0.55; });
 
+    if (man) driveMan(dt, s, k);
+
     // 출혈·거즈·필름
     blood.visible = s.bleeding; smear.visible = s.bleeding;
     if (s.bleeding) blood.scale.y = 1.8 + Math.sin(t * 6) * 0.1;
@@ -406,8 +492,8 @@ export function buildPatient() {
       src.getWorldPosition(tmpV); root.worldToLocal(tmpV); retubeIV(tmpV);
     }
     ivFreeEnd.visible = !s.ivBack;
-    chamberDrop.visible = s.ivRunning;
-    if (s.ivRunning) chamberDrop.position.set(-0.08, 1.52 - ((t * 1.4) % 1) * 0.05, 0);
+    chamberDrop.visible = s.ivRunning && !glbBags;
+    if (s.ivRunning) chamberDrop.position.set(dropAt.x, dropAt.y - ((t * 1.4) % 1) * 0.05, 0);
     drip.visible = s.ivRunning && !s.ivBack;
     if (drip.visible) { ivFreeEnd.getWorldPosition(tmpV2); root.worldToLocal(tmpV2); drip.position.set(tmpV2.x, tmpV2.y - ((t * 1.3) % 1) * 0.25, tmpV2.z); }
 
@@ -421,5 +507,5 @@ export function buildPatient() {
     }
   }
 
-  return { group: root, update, speak, parts: { rArm, lArm } };
+  return { group: root, update, speak, ready, parts: { rArm, lArm }, get man() { return man; } };
 }
