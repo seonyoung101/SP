@@ -177,6 +177,10 @@ export function applyGownLook(material, { gown = true } = {}) {
           float chinM = smoothstep(0.60, 0.66, vObjPos.y) * (1.0 - smoothstep(0.745, 0.775, vObjPos.y)) * smoothstep(-0.03, 0.03, vObjPos.z) * (1.0 - vCloth);
           vec3 skinT = vec3(0.74, 0.55, 0.46) * (0.78 + 0.5 * lum);
           diffuseColor.rgb = mix(diffuseColor.rgb, skinT, chinM * smoothstep(0.42, 0.12, lum) * 0.85);
+          // 신발은 벗겼다: 신발 영역을 병원 양말(연한 회색)로 칠한다
+          float shoeM = 1.0 - smoothstep(-0.835, -0.805, vObjPos.y);
+          vec3 sockC = vec3(0.86, 0.88, 0.9) * (0.9 + 0.5 * (lum - 0.08));
+          diffuseColor.rgb = mix(diffuseColor.rgb, sockC, shoeM);
         }`);
   };
 }

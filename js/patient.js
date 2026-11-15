@@ -336,6 +336,7 @@ export function buildPatient() {
     lying: { a: 0.12, torso: -(Math.PI / 2 - 0.12), yaw: 0, knee: 0, hx: 0, hz: -0.02 },
     edge: { a: 0.4, torso: -0.03, yaw: Math.PI / 2, knee: Math.PI / 2, hx: 0.2, hz: 0.4 },
   };
+  const ARM_OUT = 0.32;
   const state = { time: 0, frame: 0 };
   let hipY = MATTRESS_TOP + 0.115;
 
@@ -452,11 +453,11 @@ export function buildPatient() {
     const rT = pointing ? -1.15 : calm ? -0.12 : -0.5 + Math.sin(t * 3.1) * 0.35 * amp;
     rArm.shoulder.rotation.x += (rT - rArm.shoulder.rotation.x) * k;
     rArm.elbow.rotation.x += ((pointing ? -0.45 : -0.2) - rArm.elbow.rotation.x) * k;
-    rArm.shoulder.rotation.z += ((s.hallucinating ? 0.5 + Math.sin(t * 5) * 0.4 * amp : -0.05) - rArm.shoulder.rotation.z) * k;
+    rArm.shoulder.rotation.z += ((s.hallucinating ? 0.5 + Math.sin(t * 5) * 0.4 * amp : -ARM_OUT) - rArm.shoulder.rotation.z) * k;
     const lT = calm ? -0.08 : -0.35 + Math.sin(t * 4.3) * 0.18 * amp;
     lArm.shoulder.rotation.x += (lT - lArm.shoulder.rotation.x) * k;
     lArm.elbow.rotation.x += ((calm ? -0.1 : -0.6) - lArm.elbow.rotation.x) * k;
-    lArm.shoulder.rotation.z += ((calm ? 0.02 : 0.08) - lArm.shoulder.rotation.z) * k;
+    lArm.shoulder.rotation.z += ((calm ? ARM_OUT : 0.08 + ARM_OUT) - lArm.shoulder.rotation.z) * k;
     torsoPivot.rotation.z = calm ? 0 : Math.sin(t * 2.4) * 0.04 * amp;
     head.rotation.y = calm ? 0 : Math.sin(t * 1.7) * 0.5 * amp;
     head.rotation.x = s.posture === 'lying' ? 0.05 : 0.12;

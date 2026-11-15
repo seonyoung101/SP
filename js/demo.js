@@ -17,6 +17,7 @@ const SHOTS = {
   bugs: { eye: [-1.1, 1.75, 0.9], at: [1.0, 1.6, -1.7] },
   side: { eye: [1.3, 1.5, -0.7], at: [0, 1.0, -1.5] },
   wall: { eye: [0.0, 1.55, -0.55], at: [0, 1.5, -2.5] }, // 침상 머리 벽 패널
+  monitor: { eye: [0.5, 1.45, 0.3], at: [1.4, 1.25, -1.45] }, // 활력징후 모니터(환자 왼쪽)
   sink: { eye: [-0.55, 1.45, 0.85], at: [-1.6, 1.1, 2.5] }, // 손 위생 코너
 };
 
@@ -38,7 +39,8 @@ const SCRIPT = [
   { env: true, cam: 'pump', hold: 3.5, cue: { kind: CUE.env, title: '수액 펌프·폴대', text: 'NS 40 mL/hr + ceftriaxone 2 g. 우측 손등·전완 말초정맥 — 환자가 스스로 제거해 출혈 중', secs: 6 } },
   { env: true, cam: 'foley', hold: 3.5, cue: { kind: CUE.env, title: 'Foley 카테터·소변주머니', text: '바지 허리에서 나온 소변줄이 꺾여 소변이 나오지 않는 상태 (요폐 → 통증·불안의 원인)', secs: 6 } },
   { env: true, cam: 'wall', hold: 3, cue: { kind: CUE.env, title: '벽 패널 — 호출벨·산소·흡인', text: '콘센트·조명 스위치·NURSE CALL·산소(O₂)·흡인(SUCTION). 환자 상태가 악화되면 가장 먼저 쓰는 위치', secs: 6 } },
-  { env: true, cam: 'sink', hold: 3, cue: { kind: CUE.env, title: '손 위생 코너', text: '세면대·손소독제·페이퍼타월. 시연 첫 행동(손 위생)이 여기서 이루어진다', secs: 6 } },
+  { env: true, cam: 'monitor', hold: 3, cue: { kind: CUE.env, title: '활력징후 모니터', text: '환자 왼쪽 머리 쪽. 측정 전에는 수치가 비어 있고, 학습자가 활력징후를 측정하면 값이 표시된다', secs: 6 } },
+  { env: true, cam: 'sink', hold: 3, cue: { kind: CUE.env, title: '손 위생 코너', text: '문 오른쪽의 세면대·손소독제·페이퍼타월. 시연 첫 행동(손 위생)이 여기서 이루어진다', secs: 6 } },
   { env: true, cam: 'face', hold: 3, cue: { kind: CUE.env, title: '환자 — 김두두 (80세 남, SP)', text: '입원 시 지남력 정상 → 급성 변화. 좌측 경도 편마비(10년 전 뇌경색), 고혈압', secs: 6 } },
 
   // ---- 0~3분: 발견·안전 확보 ----

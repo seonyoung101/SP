@@ -340,6 +340,8 @@ renderer.setAnimationLoop(() => {
     room.setClock(`${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`);
   }
 
+  room.setMonitor(sc.done.has('vitals'));
+
   // VR 컨트롤러 호버
   if (renderer.xr.isPresenting) {
     const results = controllers.filter((c) => c.visible).map((c) => {

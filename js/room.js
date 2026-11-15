@@ -44,8 +44,8 @@ export function buildRoom() {
   // 손 위생 코너 (뒤 벽, 왼쪽): GLB가 로드되기 전/실패 시에는 단순 상자로 대체
   const station = new THREE.Group(); station.name = 'handStation'; g.add(station);
   const stationFallback = new THREE.Group(); station.add(stationFallback);
-  stationFallback.add(box(0.6, 0.85, 0.4, mat(0xd8dfe0), -1.6, 0.425, 2.28));
-  stationFallback.add(box(0.1, 0.2, 0.1, mat(0x3a8dde), -1.4, 1.3, 2.44));
+  stationFallback.add(box(0.4, 0.85, 0.6, mat(0xd8dfe0), 2.05, 0.425, 2.03));
+  stationFallback.add(box(0.1, 0.2, 0.1, mat(0x3a8dde), 2.2, 1.3, 2.2));
 
   // 침상 머리 벽 패널: 콘센트 · 조명 · 호출 · 산소 · 흡인
   {
@@ -95,7 +95,76 @@ export function buildRoom() {
     g.add(face);
   }
 
-  // GLB 세면 코너 로드 (뒤 벽 z = +2.5, 앞(방 안쪽)은 -z)
+  // 환자 오른쪽(왼쪽 벽, 머리 쪽 모서리)의 옷장 — 단순 가구 (캔버스 질감)
+  {
+    const CW = 512, CH = 1024;
+    const cv = document.createElement('canvas'); cv.width = CW; cv.height = CH;
+    const c = cv.getContext('2d');
+    const wood = c.createLinearGradient(0, 0, CW, 0); wood.addColorStop(0, '#cdbfa5'); wood.addColorStop(0.5, '#d6c9b0'); wood.addColorStop(1, '#c8baa0');
+    c.fillStyle = wood; c.fillRect(0, 0, CW, CH);
+    // 나뭇결
+    for (let i = 0; i < 260; i++) {
+      c.strokeStyle = `rgba(120,100,70,${0.04 + Math.random() * 0.06})`; c.lineWidth = 1 + Math.random() * 2;
+      const x = Math.random() * CW; c.beginPath(); c.moveTo(x, 0); c.lineTo(x + (Math.random() - 0.5) * 10, CH); c.stroke();
+    }
+    // 위 수납장(문 2) + 아래 큰 문(2)
+    const door = (x, y, w, h) => {
+      c.fillStyle = 'rgba(255,255,255,0.10)'; c.fillRect(x, y, w, h);
+      c.strokeStyle = '#8c7d63'; c.lineWidth = 4; c.strokeRect(x, y, w, h);
+      c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 2; c.strokeRect(x + 4, y + 4, w - 8, h - 8);
+    };
+    door(8, 8, 244, 250); door(260, 8, 244, 250);
+    door(8, 266, 244, 700); door(260, 266, 244, 700);
+    c.fillStyle = '#5b5143'; c.fillRect(0, 976, CW, 48); // 걸레받이
+    c.fillStyle = '#4d4639';
+    [[236, 760, 8, 90], [268, 760, 8, 90], [236, 120, 8, 60], [268, 120, 8, 60]].forEach(([x, y, w2, h2]) => { c.beginPath(); c.roundRect(x, y, w2, h2, 3); c.fill(); });
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const CWm = 1.0, CHm = 2.0, CDm = 0.55;
+    const cx = -w / 2 + 0.025 + CDm / 2 + 0.005, cz = -1.95;
+    const closet = new THREE.Group(); closet.name = 'closet'; closet.position.set(cx, CHm / 2, cz);
+    closet.add(box(CDm, CHm, CWm, mat(0xcabc9f, { roughness: 0.7 }), 0, 0, 0));
+    const front = new THREE.Mesh(new THREE.PlaneGeometry(CWm, CHm), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0 }));
+    front.rotation.y = Math.PI / 2; front.position.set(CDm / 2 + 0.002, 0, 0);
+    closet.add(front);
+    closet.add(box(CDm + 0.03, 0.04, CWm + 0.03, mat(0xbfb095, { roughness: 0.7 }), 0.0, CHm / 2 - 0.02, 0)); // 윗면 몰딩
+    g.add(closet);
+  }
+
+  // 활력징후 모니터 화면(캔버스): 측정 전에는 '--'
+  const monCanvas = document.createElement('canvas'); monCanvas.width = 640; monCanvas.height = 420;
+  const monTex = new THREE.CanvasTexture(monCanvas); monTex.colorSpace = THREE.SRGBColorSpace; monTex.anisotropy = 4;
+  let monMeasured = null; let monPhase = 0;
+  function drawMonitor(measured, t = 0) {
+    const c = monCanvas.getContext('2d'); const W = 640, H = 420;
+    c.fillStyle = '#04070a'; c.fillRect(0, 0, W, H);
+    c.font = 'bold 22px sans-serif'; c.textAlign = 'left';
+    const v = measured ? { bp: '148/86', map: '(107)', hr: '106', spo2: '95', bt: '38.4', rr: '22' } : { bp: '--/--', map: '(--)', hr: '--', spo2: '--', bt: '--.-', rr: '--' };
+    const col = measured ? 1 : 0.35;
+    c.fillStyle = `rgba(255,255,255,${col})`; c.fillText('NIBP mmHg', 20, 34);
+    c.font = 'bold 84px sans-serif'; c.fillText(v.bp, 20, 120);
+    c.font = 'bold 26px sans-serif'; c.fillText(v.map, 20, 156);
+    c.fillStyle = `rgba(80,255,120,${col})`; c.font = 'bold 22px sans-serif'; c.fillText('HR bpm', 400, 34);
+    c.font = 'bold 96px sans-serif'; c.fillText(v.hr, 400, 120);
+    c.fillStyle = `rgba(90,210,255,${col})`; c.font = 'bold 22px sans-serif'; c.fillText('SpO₂ %', 400, 178);
+    c.font = 'bold 84px sans-serif'; c.fillText(v.spo2, 400, 262);
+    c.fillStyle = `rgba(255,200,60,${col})`; c.font = 'bold 22px sans-serif'; c.fillText('TEMP °C', 20, 340);
+    c.font = 'bold 64px sans-serif'; c.fillText(v.bt, 20, 405);
+    c.fillStyle = `rgba(255,255,255,${col})`; c.font = 'bold 22px sans-serif'; c.fillText('RR', 240, 340);
+    c.font = 'bold 64px sans-serif'; c.fillText(v.rr, 240, 405);
+    // 파형
+    c.strokeStyle = measured ? '#50ff78' : '#1f3a28'; c.lineWidth = 3; c.beginPath();
+    for (let x = 0; x < 360; x++) {
+      const ph = ((x + t * 90) % 120) / 120;
+      const y = 218 - (measured ? (ph < 0.08 ? -ph * 40 : ph < 0.12 ? (ph - 0.08) * 1500 : ph < 0.16 ? 60 - (ph - 0.12) * 1900 : Math.sin(ph * 6.3) * 4) : 0);
+      if (x === 0) c.moveTo(20, y); else c.lineTo(20 + x, y);
+    }
+    c.stroke();
+    monTex.needsUpdate = true;
+  }
+  drawMonitor(false);
+  function setMonitor(measured) { if (measured !== monMeasured) { monMeasured = measured; drawMonitor(measured, monPhase); } }
+
+  // GLB 로드: 손 위생 코너(오른쪽 벽, 문 오른쪽) + 모니터·거치대
   const loadFixtures = async () => {
     const base = new URL('../assets/', import.meta.url);
     const L = new GLTFLoader();
@@ -107,17 +176,33 @@ export function buildRoom() {
     const place = (obj, scale, x, y, z, ry) => { obj.scale.setScalar(scale); obj.position.set(x, y, z); obj.rotation.y = ry; station.add(obj); };
     try {
       const [sink, towel, san, soap] = await Promise.all([get('sink.glb'), get('towel.glb'), get('sanitizer.glb'), get('soap.glb')]);
-      const wall = d / 2 - 0.025; // 벽 안쪽 면 z
-      // 세면대: 긴 변이 벽과 나란하도록 y축 90° 회전(수전은 오른쪽 끝)
-      const sS = 0.30; // 폭 약 0.57 m
-      place(sink, sS, -1.55, 0.86 - 0.57 * sS, wall - 1.07 * sS / 2 - 0.01, Math.PI / 2);
-      // 페이퍼타월, 손소독제: 세면대 위 벽
-      place(towel, 0.2, -1.88, 1.42, wall - 0.59 * 0.2 / 2, Math.PI);
-      place(san, 0.13, -1.55, 1.30, wall - 1.27 * 0.13 / 2, Math.PI);
-      // 손 소독 비누 (세면대 가장자리)
-      place(soap, 0.115, -1.30, 0.86 + 0.95 * 0.115, wall - 0.05, Math.PI);
+      const wall = w / 2 - 0.025; // 오른쪽 벽 안쪽 면 x
+      const toRoom = -Math.PI / 2; // 모델 앞(+z)을 방 안쪽(-x)으로
+      const sS = 0.28; // 세면대 길이 약 0.53 m
+      // 문(z 0.73~1.68) 오른쪽(+z)에 설치. 긴 변이 벽과 나란, 수전은 +z 끝
+      place(sink, sS, wall - 1.07 * sS / 2 - 0.01, 0.86 - 0.57 * sS, 2.03, Math.PI);
+      place(towel, 0.2, wall - 0.59 * 0.2 / 2, 1.42, 1.86, toRoom);
+      place(san, 0.13, wall - 1.27 * 0.13 / 2, 1.30, 2.2, toRoom);
+      place(soap, 0.115, wall - 0.05, 0.86 + 0.95 * 0.115, 1.83, toRoom);
       stationFallback.visible = false;
     } catch (e) { console.warn('세면 코너 GLB 로드 실패(기본 상자로 대체):', e); }
+    try {
+      const [mon, stand] = await Promise.all([get('monitor.glb'), get('mstand.glb')]);
+      const grp = new THREE.Group(); grp.name = 'vitalMonitor';
+      // 환자 왼쪽(+x) 머리 쪽, 간호사 쪽(+z)을 향하게
+      grp.position.set(1.4, 0, -1.45); grp.rotation.y = -0.55;
+      const sSt = 0.58; stand.scale.setScalar(sSt); stand.position.y = 0.951 * sSt; grp.add(stand);
+      const sM = 0.2; mon.scale.setScalar(sM); mon.position.set(0, 0.951 * sSt * 2 + 0.951 * sM + 0.02, 0); grp.add(mon);
+      // 화면 위치: 정면(+z)에서 화면 중앙으로 광선을 쏴서 표면 깊이를 찾는다
+      mon.updateMatrixWorld(true);
+      const rc = new THREE.Raycaster(new THREE.Vector3(0.02 * sM, mon.position.y + 0.1 * sM, 5), new THREE.Vector3(0, 0, -1));
+      const hit = rc.intersectObject(mon, true)[0];
+      const zFront = hit ? hit.point.z - mon.position.z : 0.5 * sM; // 월드(스케일 적용) 기준 깊이
+      const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.2 * sM, 0.76 * sM), new THREE.MeshBasicMaterial({ map: monTex, toneMapped: false }));
+      screen.position.set(0.02 * sM, mon.position.y + 0.1 * sM, mon.position.z + zFront + 0.003);
+      grp.add(screen);
+      g.add(grp);
+    } catch (e) { console.warn('모니터 GLB 로드 실패:', e); }
   };
   const fixturesReady = loadFixtures();
 
@@ -160,6 +245,7 @@ export function buildRoom() {
     lit = on;
   }
   function update(dt) {
+    if (monMeasured) { monPhase += dt; if (((monPhase * 10) | 0) !== (((monPhase - dt) * 10) | 0)) drawMonitor(true, monPhase); }
     const k = Math.min(1, dt * 3);
     ceiling.intensity += ((lit ? 2.6 : 0) - ceiling.intensity) * k;
     hemi.intensity += ((lit ? 1.0 : 0.35) - hemi.intensity) * k;
@@ -167,5 +253,5 @@ export function buildRoom() {
     lampMesh.material.emissive.setScalar(lit ? 0.9 : 0.1);
   }
 
-  return { group: g, setLight, setClock, update, bounds: ROOM, ready: fixturesReady };
+  return { group: g, setLight, setClock, setMonitor, update, bounds: ROOM, ready: fixturesReady };
 }
