@@ -360,21 +360,35 @@ export function buildPatient() {
       backrest = new THREE.Group(); backrest.visible = false; bed.add(backrest);
       const wedge = rbox(0.72, 0.66, 0.1, std(0xdfe2ee, { roughness: 0.75 }), 0.04); wedge.position.set(0, 0.33, -0.31); backrest.add(wedge);
     }));
-    // 수액 폴대 + 수액백
-    tasks.push(Promise.all([loadGLB('pole.glb'), loadGLB('bag.glb')]).then(([pg, bg]) => {
+    // 수액 폴대 + 수액백(튜브 일체형) + 주입 펌프
+    tasks.push(Promise.all([loadGLB('pole2.glb'), loadGLB('bag2.glb'), loadGLB('pump.glb')]).then(([pg, bg, pu]) => {
+      pg.scene.traverse((o) => { if (o.isMesh) o.material.color.set(0xc9cfd4); });
       pg.scene.position.y = 0.951; pole.add(pg.scene); poleHW.visible = false;
       glbBags = true;
       const plasticTube = std(0xe9f3f7, { transparent: true, opacity: 0.8, roughness: 0.25 });
-      pump.position.set(0, 0.95, 0.075);
-      pumpOut.set(pole.position.x, 0.85, pole.position.z + 0.075);
-      const hookY = 1.79;
-      [[-0.257, 0.5], [0.257, 0.4]].forEach(([x, sc], i) => {
+      // 수액백: 폴대 갈고리에 걸고, 백에 붙은 줄 끝(루어)에서 펌프 입구까지 짧게 이어 준다
+      const hookY = 1.80;
+      const sP = 0.28; const pcx = 0.30 * sP; const pcy = 0.93; // 펌프 크기·위치 (모델 클램프가 -x쪽)
+      const pumpIn = new THREE.Vector3(pcx + 0.23 * sP, pcy + 0.92 * sP, -0.01);
+      [[-0.27, 0.38], [0.25, 0.34]].forEach(([x, sc], i) => {
         const b = bg.scene.clone(true); b.scale.setScalar(sc);
-        const y = hookY - 0.935 * sc + 0.012; b.position.set(x, y, 0); pole.add(b);
-        const endY = y - 0.49 * sc;
-        const t = tube([[x, endY, 0], [x * 0.55, endY - 0.06, 0.03], [x * 0.12, 1.12, 0.06], [0, 1.06, 0.075]], 0.0065, plasticTube, 24); pole.add(t);
-        if (i === 0) { dropAt.x = x; dropAt.y = y + 0.06; }
+        const y = hookY - 0.93 * sc; b.position.set(x, y, 0); pole.add(b);
+        const luerY = y - 0.93 * sc;
+        const t = tube([[x, luerY + 0.01, 0], [x * 0.75, luerY - 0.09, 0.03], [x * 0.3, luerY - 0.03, 0.04], [pumpIn.x, pumpIn.y, pumpIn.z]], 0.0055, plasticTube, 24); pole.add(t);
+        if (i === 0) { dropAt.x = x; dropAt.y = y + 0.12 * sc; }
       });
+      // 펌프: 폴대에 클램프로 고정 (모델 클램프가 -x쪽)
+      pu.scene.scale.setScalar(sP);
+      pump.position.set(pcx, pcy, 0.0);
+      pu.scene.updateMatrixWorld(true); // 부모 없이 계산해서 펌프 로컬 좌표로 화면 깊이를 구한다
+      const rc = new THREE.Raycaster(new THREE.Vector3(0.23 * sP, 0.42 * sP, 5), new THREE.Vector3(0, 0, -1));
+      const hit = rc.intersectObject(pu.scene, true)[0];
+      const zF = hit ? hit.point.z : 0.33 * sP;
+      pump.children.forEach((c) => { c.visible = false; }); pump.add(pu.scene);
+      pumpScreen.geometry.dispose(); pumpScreen.geometry = new THREE.PlaneGeometry(0.36 * sP, 0.3 * sP);
+      pumpScreen.position.set(0.23 * sP, 0.42 * sP, zF + 0.002); pumpScreen.visible = true; pump.add(pumpScreen);
+      led.position.set(0.0, 0.66 * sP, zF + 0.002); led.scale.setScalar(0.6); led.visible = true; pump.add(led);
+      pumpOut.set(pole.position.x + pcx + 0.24 * sP, pcy - 0.96 * sP, pole.position.z);
       lastEnd.set(1e9, 0, 0);
     }));
     // 환자 (남편 모델)
