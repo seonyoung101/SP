@@ -1,0 +1,4 @@
+html, body { margin: 0; height: 100%; overflow: hidden; background: #05080d; font-family: "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+canvas { display: block; touch-action: none; cursor: grab; }
+#help { position: fixed; left: 12px; top: 12px; z-index: 5; padding: 8px 12px; border-radius: 10px; background: rgba(8, 18, 34, .78); color: #cfe3ff; font-size: 13px; line-height: 1.5; pointer-events: none; }
+body.in-xr #help { display: none; }
