@@ -14,6 +14,8 @@
 2. 1~2분 뒤 `https://seonyoung101.github.io/SP/` 접속
 3. Quest 브라우저에서 같은 주소를 열고 **ENTER VR** 버튼을 누릅니다.
 
+**Cloudflare로 열기** (조원 공유용 주소): 대시보드 → Workers & Pages → Create → Import a repository(GitHub `seonyoung101/SP`) → 빌드 명령 없음, 배포 명령 `npx wrangler deploy` → Deploy. 루트의 `wrangler.jsonc`가 설정이며, `.assetsignore`로 tools·tests 등은 올리지 않습니다. 이후 `main`에 푸시하면 자동으로 다시 배포됩니다.
+
 **로컬에서 열기**: 저장소 폴더에서 `python3 -m http.server 8000` → `http://localhost:8000` (localhost는 HTTPS 없이도 WebXR 가능)
 
 ## 시연 영상 모드 (기본)

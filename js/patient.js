@@ -241,27 +241,52 @@ export function buildPatient() {
   // ============================================================ Foley·소변주머니
   const tubeM = std(0xe7eef1, { transparent: true, opacity: 0.85, roughness: 0.3 });
   // 소변줄은 바지 허리(왼쪽 옆구리 앞)에서 나와 침대 옆으로 내려간다
-  const foleyOk = tube([[0.15, 0.975, -0.25], [0.26, 0.965, -0.2], [0.38, 0.84, -0.12], [0.5, 0.66, 0.1], [0.57, 0.5, 0.5]], 0.011, tubeM, 40);
-  const foleyKink = tube([[0.15, 0.975, -0.25], [0.2, 0.97, -0.21], [0.19, 1.03, -0.19], [0.26, 0.955, -0.17], [0.38, 0.84, -0.12], [0.5, 0.66, 0.1], [0.57, 0.5, 0.5]], 0.011, tubeM, 40);
+  const foleyOk = tube([[0.15, 0.975, -0.25], [0.26, 0.965, -0.2], [0.38, 0.84, -0.12], [0.52, 0.66, 0.1], [0.67, 0.52, 0.5]], 0.011, tubeM, 40);
+  const foleyKink = tube([[0.15, 0.975, -0.25], [0.2, 0.97, -0.21], [0.19, 1.03, -0.19], [0.26, 0.955, -0.17], [0.38, 0.84, -0.12], [0.52, 0.66, 0.1], [0.67, 0.52, 0.5]], 0.011, tubeM, 40);
   bed.add(foleyOk, foleyKink);
   const kinkMark = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.007, 8, 20), std(0xff8a1f, { emissive: 0x663300 }));
   kinkMark.position.set(0.19, 1.0, -0.19); kinkMark.rotation.y = Math.PI / 2; bed.add(kinkMark);
 
-  // 소변주머니 (눈금 라벨 + 소변 수위): 간호사가 서 있는 발쪽에서 보이도록 앞면이 +z를 향함
-  const bagGroup = new THREE.Group(); bagGroup.position.set(0.58, 0.3, 0.5); bed.add(bagGroup);
+  // 소변주머니(2000 mL 소변백): 투명 비닐 + 파란 눈금·글자 인쇄, 파란 클램프, 아래쪽 T자 배출구. 앞면이 +z(간호사 쪽)
+  const BW = 0.19, BH = 0.28;
+  const bagGroup = new THREE.Group(); bagGroup.position.set(0.58, 0.3, 0.5); bagGroup.scale.setScalar(1.2); bed.add(bagGroup);
   const bagTex = labelTexture((g, w, h) => {
     g.clearRect(0, 0, w, h);
-    g.strokeStyle = '#46515a'; g.fillStyle = '#46515a'; g.lineWidth = 3; g.font = 'bold 22px sans-serif';
-    for (let i = 0; i <= 8; i++) {
-      const y = h - 14 - (i / 8) * (h - 40);
-      g.beginPath(); g.moveTo(w - 56, y); g.lineTo(w - (i % 2 ? 40 : 26), y); g.stroke();
-      if (i % 2 === 0 && i > 0) g.fillText(String(i * 100), w - 100, y + 7);
+    const B = '#2a49b0';
+    g.strokeStyle = 'rgba(120,135,150,0.7)'; g.lineWidth = 6; g.strokeRect(8, 8, w - 16, h - 16); // 열접착 테두리
+    g.fillStyle = B; g.font = 'bold 30px sans-serif'; g.textAlign = 'left';
+    g.fillText('URINE', 24, 92); g.fillText('DRAINAGE', 24, 126); g.fillText('BAG', 24, 160);
+    g.font = '15px sans-serif'; g.fillText('REF  U-2000', 24, 196); g.fillText('(2000 mL)', 24, 216);
+    g.strokeStyle = B; g.lineWidth = 2; g.font = '13px sans-serif';
+    g.strokeRect(24, 250, 118, 26); g.fillText('NAME', 28, 245);
+    g.strokeRect(24, 308, 118, 26); g.fillText('ROOM / DATE', 28, 303);
+    // 눈금 (가운데)
+    const gx = 218; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(gx, 70); g.lineTo(gx, h - 70); g.stroke();
+    for (let i = 0; i <= 20; i++) {
+      const y = h - 70 - (i / 20) * (h - 140);
+      g.beginPath(); g.moveTo(gx, y); g.lineTo(gx + (i % 4 === 0 ? 26 : 14), y); g.stroke();
+      if (i % 4 === 0 && i > 0) { g.font = '14px sans-serif'; g.fillText(String(i * 100), gx + 32, y + 5); }
     }
-  }, 128, 256);
-  bagGroup.add(rbox(0.16, 0.3, 0.02, std(0xe9f2f6, { transparent: true, opacity: 0.55, roughness: 0.2 }), 0.008));
-  const urine = rbox(0.14, 1, 0.012, std(0xe6c53a, { transparent: true, opacity: 0.9, roughness: 0.2 }), 0.004); urine.position.set(0, -0.14, 0.004); bagGroup.add(urine);
-  const bagScale = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.3), new THREE.MeshBasicMaterial({ map: bagTex.tex, transparent: true, depthWrite: false })); bagScale.position.z = 0.0125; bagGroup.add(bagScale);
-  const bagHook = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.004, 6, 14, Math.PI), metal); bagHook.position.set(0, 0.17, 0); bagGroup.add(bagHook);
+    // 오른쪽 위 타원 안내 라벨
+    g.fillStyle = B; g.beginPath(); g.roundRect(306, 70, 62, 190, 31); g.fill();
+    g.fillStyle = '#fff'; g.font = 'bold 12px sans-serif'; g.textAlign = 'center';
+    ['소변', '배액', '주머니', '', '용량', '2000', 'mL'].forEach((t, i) => g.fillText(t, 337, 110 + i * 22));
+  }, 384, 576);
+  const bagPlastic = std(0xeaf1f5, { transparent: true, opacity: 0.45, roughness: 0.2, side: THREE.DoubleSide });
+  bagGroup.add(rbox(BW, BH, 0.014, bagPlastic, 0.006));
+  const urine = rbox(BW - 0.016, 1, 0.01, std(0xe6c53a, { transparent: true, opacity: 0.85, roughness: 0.2 }), 0.003); urine.position.set(0, -0.13, 0.002); bagGroup.add(urine);
+  const bagScale = new THREE.Mesh(new THREE.PlaneGeometry(BW, BH), new THREE.MeshBasicMaterial({ map: bagTex.tex, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); bagScale.position.z = 0.0085; bagGroup.add(bagScale);
+  // 걸이 탭 + 고리
+  const hangTab = rbox(0.05, 0.018, 0.012, std(0xf2f5f7, { roughness: 0.6 }), 0.004); hangTab.position.set(0, BH / 2 + 0.008, 0); bagGroup.add(hangTab);
+  const bagHook = new THREE.Mesh(new THREE.TorusGeometry(0.02, 0.004, 6, 14, Math.PI), metal); bagHook.position.set(0, BH / 2 + 0.028, 0); bagGroup.add(bagHook);
+  // 위쪽 투명 유입관(우측 파란 클램프) — Foley 관이 여기에 연결된다
+  const inlet = tube([[0.075, BH / 2 + 0.03, 0.004], [0.075, BH / 2 - 0.01, 0.01], [0.04, BH / 2 - 0.035, 0.012], [-0.04, BH / 2 - 0.035, 0.012], [-0.07, BH / 2 - 0.06, 0.012]], 0.0042, tubeM, 24); bagGroup.add(inlet);
+  const clamp = rbox(0.03, 0.012, 0.012, std(0x2a49b0, { roughness: 0.5 }), 0.003); clamp.position.set(0.075, BH / 2 - 0.02, 0.012); bagGroup.add(clamp);
+  // 아래쪽 흰색 T자 배출구(왼쪽)
+  const white = std(0xf4f6f7, { roughness: 0.5 });
+  const valveV = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.04, 10), white); valveV.position.set(-0.07, -BH / 2 - 0.018, 0.004); bagGroup.add(valveV);
+  const valveH = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.05, 10), white); valveH.rotation.z = Math.PI / 2; valveH.position.set(-0.062, -BH / 2 - 0.036, 0.004); bagGroup.add(valveH);
   let urineLevel = 0.02;
 
   // ============================================================ 수액 폴대·펌프
@@ -292,13 +317,17 @@ export function buildPatient() {
   const pumpTex = labelTexture(() => {}, 160, 100);
   function drawPump(running) {
     const g = pumpTex.ctx; g.fillStyle = '#0b1b12'; g.fillRect(0, 0, 160, 100);
-    g.fillStyle = running ? '#53f08a' : '#ff5a4a'; g.font = 'bold 26px monospace'; g.textAlign = 'center';
-    g.fillText(running ? '40 mL/h' : 'STOPPED', 80, 44);
-    g.font = '16px monospace'; g.fillStyle = running ? '#9ff0bb' : '#ffb0a8'; g.fillText(running ? 'NS RUNNING' : 'PAUSED', 80, 74);
+    g.textAlign = 'center';
+    g.fillStyle = running ? '#53f08a' : '#ff8a7a'; g.font = 'bold 30px monospace';
+    g.fillText('40 mL/h', 80, 34); // 주입 속도는 정지 중에도 계속 보인다
+    g.font = 'bold 17px monospace'; g.fillStyle = running ? '#9ff0bb' : '#ff5a4a';
+    g.fillText(running ? 'RUNNING' : '■ STOPPED', 80, 60);
+    g.font = '13px monospace'; g.fillStyle = running ? '#7fcf9b' : '#e0a09a';
+    g.fillText('VTBI 500 mL', 80, 84);
     pumpTex.tex.needsUpdate = true;
   }
   drawPump(true);
-  const pumpScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.07), new THREE.MeshBasicMaterial({ map: pumpTex.tex })); pumpScreen.position.set(0, 0.04, 0.052); pump.add(pumpScreen);
+  const pumpScreen = new THREE.Mesh(new THREE.PlaneGeometry(0.11, 0.07), new THREE.MeshBasicMaterial({ map: pumpTex.tex, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })); pumpScreen.position.set(0, 0.04, 0.052); pump.add(pumpScreen);
   const ledM = new THREE.MeshBasicMaterial({ color: 0x40ff80 });
   const led = ball(0.007, ledM); led.position.set(0.05, -0.06, 0.052); pump.add(led);
   let pumpState = true;
@@ -388,7 +417,7 @@ export function buildPatient() {
       const zF = hit ? hit.point.z : 0.33 * sP;
       pump.children.forEach((c) => { c.visible = false; }); pump.add(pu.scene);
       pumpScreen.geometry.dispose(); pumpScreen.geometry = new THREE.PlaneGeometry(0.36 * sP, 0.3 * sP);
-      pumpScreen.position.set(0.23 * sP, 0.42 * sP, zF + 0.002); pumpScreen.visible = true; pump.add(pumpScreen);
+      pumpScreen.position.set(0.23 * sP, 0.42 * sP, zF + 0.004); pumpScreen.visible = true; pump.add(pumpScreen);
       led.position.set(0.0, 0.66 * sP, zF + 0.002); led.scale.setScalar(0.6); led.visible = true; pump.add(led);
       pumpOut.set(pole.position.x + pcx + 0.24 * sP, pcy - 0.96 * sP, pole.position.z);
       lastEnd.set(1e9, 0, 0);
@@ -403,11 +432,11 @@ export function buildPatient() {
       // 혈압 커프: 왼쪽 위팔 (활력징후 모니터는 환자 왼쪽)
       cuffObj = new THREE.Group();
       const cuffM = std(0x2f6f9a, { roughness: 0.8 });
-      const cuffBody = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.07, 0.15, 24, 1, true), cuffM); cuffBody.rotation.z = Math.PI / 2; cuffBody.material.side = THREE.DoubleSide; cuffObj.add(cuffBody);
-      const cuffEdge = new THREE.Mesh(new THREE.CylinderGeometry(0.0775, 0.0775, 0.012, 24, 1, true), std(0x1d4a68, { roughness: 0.8, side: THREE.DoubleSide })); cuffEdge.rotation.z = Math.PI / 2; cuffEdge.position.x = 0.07; cuffObj.add(cuffEdge);
-      const velcro = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.002, 0.05), std(0xd8dde0, { roughness: 1 })); velcro.position.set(0, 0.078, 0); cuffObj.add(velcro);
-      const cuffPort = new THREE.Object3D(); cuffPort.position.set(-0.03, 0.0, 0.075); cuffObj.add(cuffPort); cuffHoseSrc = cuffPort;
-      cuffObj.position.set(0.36, 0.0, 0.0); m.bones.lShoulder.add(cuffObj);
+      const cuffBody = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.064, 0.15, 24, 1, true), cuffM); cuffBody.rotation.z = Math.PI / 2; cuffBody.material.side = THREE.DoubleSide; cuffObj.add(cuffBody);
+      const cuffEdge = new THREE.Mesh(new THREE.CylinderGeometry(0.0695, 0.0695, 0.012, 24, 1, true), std(0x1d4a68, { roughness: 0.8, side: THREE.DoubleSide })); cuffEdge.rotation.z = Math.PI / 2; cuffEdge.position.x = 0.07; cuffObj.add(cuffEdge);
+      const velcro = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.002, 0.05), std(0xd8dde0, { roughness: 1 })); velcro.position.set(0, 0.07, 0); cuffObj.add(velcro);
+      const cuffPort = new THREE.Object3D(); cuffPort.position.set(-0.03, 0.0, 0.068); cuffObj.add(cuffPort); cuffHoseSrc = cuffPort;
+      cuffObj.position.set(0.17, -0.045, -0.012); cuffObj.rotation.z = -0.26; m.bones.lShoulder.add(cuffObj);
       cuffHose = new THREE.Mesh(tubeGeo([[0, 0, 0], [0.1, 0, 0], [0.2, 0, 0]], 0.006), std(0x2b2f33, { roughness: 0.6 })); root.add(cuffHose);
       const put = (o, x, y, z) => { o.position.set(x, y, z); site.add(o); };
       put(blood, 0, 0, 0); put(smear, 0.012, -0.035, -0.004); put(gauze, 0, 0, 0.006); put(tape, 0, 0, 0.007);
@@ -510,7 +539,7 @@ export function buildPatient() {
     tubeM.color.lerp(s.urineFlowing ? yellow : clear, k * 0.5);
     if (s.urineFlowing) urineLevel = Math.min(0.15, urineLevel + dt * 0.006); else urineLevel = 0.02;
     urine.scale.y = urineLevel * 1.6;
-    urine.position.y = -0.14 + (urineLevel * 1.6) / 2;
+    urine.position.y = -BH / 2 + 0.01 + (urineLevel * 1.6) / 2;
 
     if (cuffHose && cuffHoseSrc) {
       hoseT += dt;

@@ -45,8 +45,8 @@ export function buildRoom() {
   // 손 위생 코너 (뒤 벽, 왼쪽): GLB가 로드되기 전/실패 시에는 단순 상자로 대체
   const station = new THREE.Group(); station.name = 'handStation'; g.add(station);
   const stationFallback = new THREE.Group(); station.add(stationFallback);
-  stationFallback.add(box(0.4, 0.85, 0.6, mat(0xd8dfe0), 2.05, 0.425, 2.03));
-  stationFallback.add(box(0.1, 0.2, 0.1, mat(0x3a8dde), 2.2, 1.3, 2.2));
+  stationFallback.add(box(0.4, 0.85, 0.6, mat(0xd8dfe0), 2.05, 0.425, 0.35));
+  stationFallback.add(box(0.1, 0.2, 0.1, mat(0x3a8dde), 2.2, 1.3, 0.52));
 
   // 침상 머리 벽 패널: 콘센트 · 조명 · 호출 · 산소 · 흡인
   {
@@ -221,11 +221,11 @@ export function buildRoom() {
       const wall = w / 2 - 0.025; // 오른쪽 벽 안쪽 면 x
       const toRoom = -Math.PI / 2; // 모델 앞(+z)을 방 안쪽(-x)으로
       const sS = 0.28; // 세면대 길이 약 0.53 m
-      // 문(z 0.73~1.68) 오른쪽(+z)에 설치. 긴 변이 벽과 나란, 수전은 +z 끝
-      place(sink, sS, wall - 1.07 * sS / 2 - 0.01, 0.86 - 0.57 * sS, 2.03, Math.PI);
-      place(towel, 0.2, wall - 0.59 * 0.2 / 2, 1.42, 1.86, toRoom);
-      place(san, 0.13, wall - 1.27 * 0.13 / 2, 1.30, 2.2, toRoom);
-      place(soap, 0.115, wall - 0.05, 0.86 + 0.95 * 0.115, 1.83, toRoom);
+      // 문(z 0.73~1.68)을 열고 들어온 간호사의 오른쪽 = 문보다 -z쪽(침대 쪽)
+      place(sink, sS, wall - 1.07 * sS / 2 - 0.01, 0.86 - 0.57 * sS, 0.35, Math.PI);
+      place(towel, 0.2, wall - 0.59 * 0.2 / 2, 1.42, 0.18, toRoom);
+      place(san, 0.13, wall - 1.27 * 0.13 / 2, 1.30, 0.52, toRoom);
+      place(soap, 0.115, wall - 0.05, 0.86 + 0.95 * 0.115, 0.15, toRoom);
       stationFallback.visible = false;
     } catch (e) { console.warn('세면 코너 GLB 로드 실패(기본 상자로 대체):', e); }
     try {
