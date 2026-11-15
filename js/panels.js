@@ -20,6 +20,11 @@ export function createPanels(app) {
           onClick: () => { ui.tab = i; app.invalidate(); },
         });
       });
+      // 남은 시간 (제목줄 오른쪽)
+      const low = sc.started && !sc.practice && sc.remaining <= 180;
+      ctx.textAlign = 'right'; ctx.fillStyle = low ? C.warn : C.text; ctx.font = `bold 38px ${FONT}`;
+      ctx.fillText(sc.started ? fmt(sc.practice ? sc.t : sc.remaining) : '--:--', 736, 56);
+      ctx.textAlign = 'left';
       let y = 158;
       for (const a of ACTION_META.filter((x) => x.tab === ui.tab)) {
         const done = sc.done.has(a.id) && a.id !== 'finish' && !['restraint', 'deny'].includes(a.id) ? true : (['restraint', 'deny'].includes(a.id) && sc.done.has(a.id));
@@ -28,79 +33,18 @@ export function createPanels(app) {
         });
         y += 100;
       }
-    },
-  });
-
-  // ---------------------------------------------------------------- 상황 정보
-  const status = new Panel({
-    name: 'status', width: 0.75, height: 1.0, px: 768,
-    draw(ctx, p) {
-      p.frame(ctx, '상황 정보');
-      ctx.textAlign = 'right'; ctx.fillStyle = C.muted; ctx.font = `22px ${FONT}`;
-      ctx.fillText(sc.practice ? '연습 모드(시간 제한 없음)' : '러닝 10분', 736, 54);
-      ctx.textAlign = 'left';
-
-      // 타이머
-      const low = sc.started && sc.remaining <= 180;
-      ctx.fillStyle = low ? C.warn : C.text; ctx.font = `bold 88px ${FONT}`;
-      ctx.fillText(sc.started ? fmt(sc.practice ? sc.t : sc.remaining) : '--:--', 32, 160);
-      ctx.fillStyle = C.muted; ctx.font = `22px ${FONT}`;
-      ctx.fillText(sc.practice ? '경과 시간' : '남은 시간', 36, 192);
-
-      // 단계
-      const pw = (768 - 40) / 4;
-      META.phases.forEach((ph, i) => {
-        const cur = sc.started && !sc.ended && sc.phase.id === ph.id;
-        roundRect(ctx, 20 + i * pw, 212, pw - 8, 56, 10);
-        ctx.fillStyle = cur ? '#2c5a99' : '#14233a'; ctx.fill();
-        ctx.strokeStyle = cur ? '#bfe0ff' : '#2a4468'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = cur ? C.text : C.muted; ctx.font = `bold 18px ${FONT}`; ctx.textAlign = 'center';
-        const lines = wrapText(ctx, ph.label, pw - 24);
-        lines.slice(0, 2).forEach((ln, j) => ctx.fillText(ln, 20 + i * pw + (pw - 8) / 2, 238 + j * 22 - (lines.length > 1 ? 8 : -4)));
-        ctx.textAlign = 'left';
-      });
-
-      if (sc.alerted && !sc.ended) {
-        roundRect(ctx, 20, 282, 728, 52, 10); ctx.fillStyle = '#6b4310'; ctx.fill();
-        ctx.fillStyle = C.warn; ctx.font = `bold 28px ${FONT}`; ctx.textAlign = 'center';
-        ctx.fillText('⏰ 종료 3분 전', 384, 318); ctx.textAlign = 'left';
-      }
-
-      // 정보 카드 (최근 것이 위)
-      let y = 352;
-      const bottom = 868;
-      const cards = [...ui.cards].reverse();
-      if (!cards.length) {
-        ctx.fillStyle = C.muted; ctx.font = `22px ${FONT}`;
-        ctx.fillText('수행 결과(활력징후·사정 등)가 여기에 쌓입니다.', 32, y + 30);
-      }
-      for (const card of cards) {
-        const h = 44 + card.rows.length * 31 + 12;
-        if (y + h > bottom) break;
-        roundRect(ctx, 20, y, 728, h, 12); ctx.fillStyle = '#112340'; ctx.fill();
-        ctx.strokeStyle = '#2a4468'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = C.accent; ctx.font = `bold 24px ${FONT}`; ctx.fillText(card.title, 36, y + 33);
-        ctx.font = `22px ${FONT}`;
-        card.rows.forEach(([k, v], i) => {
-          ctx.fillStyle = C.muted; ctx.fillText(k, 40, y + 66 + i * 31);
-          ctx.fillStyle = C.text; ctx.fillText(fitText(ctx, v, 480), 240, y + 66 + i * 31);
-        });
-        y += h + 10;
-      }
-
-      // 토스트
+      // 안내 토스트 (수행할 수 없는 이유 등)
       if (ui.toast && ui.toast.until > performance.now()) {
-        roundRect(ctx, 20, 878, 728, 54, 10); ctx.fillStyle = '#5a1f24'; ctx.fill();
+        roundRect(ctx, 20, 872, 728, 54, 10); ctx.fillStyle = '#5a1f24'; ctx.fill();
         ctx.fillStyle = '#ffd0d0'; ctx.font = `bold 22px ${FONT}`;
-        ctx.fillText(fitText(ctx, ui.toast.text, 690), 34, 913);
+        ctx.fillText(fitText(ctx, ui.toast.text, 690), 34, 907);
       } else if (ui.debug) {
         ctx.fillStyle = C.muted; ctx.font = `20px ${FONT}`;
-        ctx.fillText(`[debug] 정서 강도 ${sc.emotion.toFixed(1)} · 환시 ${sc.hallucinating}`, 32, 912);
+        ctx.fillText(`[debug] 정서 강도 ${sc.emotion.toFixed(1)} · 환시 ${sc.hallucinating}`, 32, 906);
       }
-
       // 하단 버튼
       p.button(ctx, 'voice', 20, 944, 232, 62, ui.voice ? '🔊 음성 켜짐' : '🔇 음성 꺼짐', { size: 22, align: 'center', onClick: () => app.toggleVoice() });
-      if (sc.ended) p.button(ctx, 'report', 262, 944, 232, 62, '결과 보기', { size: 22, align: 'center', onClick: () => app.openForm({ type: 'report' }) });
+      if (sc.ended) p.button(ctx, 'report', 262, 944, 232, 62, '결과 보기', { size: 22, align: 'center', onClick: () => app.openForm({ type: 'report', report: sc.report() }) });
       p.button(ctx, 'restart', 516, 944, 232, 62, '처음부터', { size: 22, align: 'center', onClick: () => app.restart() });
     },
   });
@@ -250,5 +194,5 @@ export function createPanels(app) {
     p.button(ctx, 'rp_close', 576, p.pxH - 98, 200, 70, '닫기', { align: 'center', size: 28, onClick: () => app.closeForm() });
   }
 
-  return { menu, status, transcript, form, all: [menu, status, transcript, form] };
+  return { menu, transcript, form, all: [menu, transcript, form] };
 }

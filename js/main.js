@@ -51,7 +51,6 @@ function place(panel, x, y, z, look = nurseEye) {
   scene.add(panel.mesh);
 }
 place(panels.menu, -0.98, 1.42, -0.45);
-place(panels.status, 0.98, 1.42, -0.45);
 panels.transcript.mesh.position.set(0, 2.17, -2.43);
 scene.add(panels.transcript.mesh);
 place(panels.form, 0, 1.5, -0.6);
@@ -107,7 +106,12 @@ function say(entry) {
   invalidateAll();
 }
 function toast(text) { ui.toast = { text, until: performance.now() + 4000 }; invalidateAll(); }
-function addCard(card) { if (!card) return; ui.cards.push(card); if (ui.cards.length > 12) ui.cards.shift(); }
+// 수행 결과(활력징후 등)는 별도 패널 없이 자막 한 줄로 남긴다
+function addCard(card) {
+  if (!card) return;
+  const body = card.rows.map(([k, v]) => `${k} ${v}`).join(' · ');
+  say({ who: 'system', text: `${card.title} — ${body}` });
+}
 
 function applyEnv() { room.setLight(sc.lightOn); }
 
@@ -264,6 +268,15 @@ function pickController(c) {
 renderer.xr.addEventListener('sessionstart', () => { document.body.classList.add('in-xr'); });
 renderer.xr.addEventListener('sessionend', () => { document.body.classList.remove('in-xr'); camera.position.set(0, 1.6, 0); });
 
+// H 키: 메뉴·자막을 숨겨 장면만 보여 준다 (시연 녹화용)
+let hudOn = true;
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'h' && e.key !== 'H') return;
+  hudOn = !hudOn;
+  panels.menu.mesh.visible = hudOn;
+  panels.transcript.mesh.visible = hudOn;
+});
+
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -284,8 +297,8 @@ renderer.setAnimationLoop(() => {
     if (ev.type === 'timeup') { say({ who: 'system', text: '러닝 시간(10분)이 끝났습니다.' }); app.finishSim(); }
   }
   const secNow = Math.floor(sc.practice ? sc.t : sc.remaining);
-  if (secNow !== lastSecShown) { lastSecShown = secNow; panels.status.invalidate(); }
-  if (ui.toast && ui.toast.until < performance.now()) { ui.toast = null; panels.status.invalidate(); }
+  if (secNow !== lastSecShown) { lastSecShown = secNow; panels.menu.invalidate(); }
+  if (ui.toast && ui.toast.until < performance.now()) { ui.toast = null; panels.menu.invalidate(); }
 
   // 시계 (02:00 + 경과 분)
   const min = Math.floor(sc.t / 60);
