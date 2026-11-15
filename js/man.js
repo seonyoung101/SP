@@ -34,6 +34,8 @@ function weightsFor(x, y, z, skin = true) {
   const keys = skin
     ? [[0.02, 'pelvis'], [0.17, 'spine1'], [0.42, 'spine2'], [0.62, 'spine2'], [0.665, 'neck'], [0.705, 'head']]
     : [[0.02, 'pelvis'], [0.17, 'spine1'], [0.42, 'spine2'], [0.66, 'spine2'], [0.72, 'neck'], [0.80, 'head']];
+  // 얼굴 앞쪽(턱·목 앞)은 머리 쪽으로 더 일찍 넘어가야 턱이 늘어지지 않는다
+  if (skin && z > 0.0 && y > 0.6) { keys[4] = [0.665, 'head']; keys[3] = [0.63, 'neck']; }
   if (y <= keys[0][0]) trunk[IDX.pelvis] = 1;
   else if (y >= keys[keys.length - 1][0]) trunk[IDX.head] = 1;
   else {
@@ -171,6 +173,10 @@ export function applyGownLook(material, { gown = true } = {}) {
           vec3 gownC = mix(vec3(0.80, 0.90, 0.93), vec3(0.62, 0.78, 0.86), dots * 0.55);
           gownC *= 0.78 + 0.42 * lum; // 원본 명암(주름)을 약하게 남김
           diffuseColor.rgb = mix(diffuseColor.rgb, gownC, vCloth);
+          // 턱·목 앞의 어두운 그림자/수염 자국 완화: 어두운 텍셀을 피부색 쪽으로 끌어올린다
+          float chinM = smoothstep(0.60, 0.66, vObjPos.y) * (1.0 - smoothstep(0.745, 0.775, vObjPos.y)) * smoothstep(-0.03, 0.03, vObjPos.z) * (1.0 - vCloth);
+          vec3 skinT = vec3(0.74, 0.55, 0.46) * (0.78 + 0.5 * lum);
+          diffuseColor.rgb = mix(diffuseColor.rgb, skinT, chinM * smoothstep(0.42, 0.12, lum) * 0.85);
         }`);
   };
 }

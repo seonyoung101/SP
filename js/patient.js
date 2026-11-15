@@ -240,11 +240,12 @@ export function buildPatient() {
 
   // ============================================================ Foley·소변주머니
   const tubeM = std(0xe7eef1, { transparent: true, opacity: 0.85, roughness: 0.3 });
-  const foleyOk = tube([[0.11, 0.95, 0.12], [0.24, 0.92, 0.15], [0.42, 0.8, 0.22], [0.56, 0.62, 0.34], [0.58, 0.5, 0.5]], 0.011, tubeM, 40);
-  const foleyKink = tube([[0.11, 0.95, 0.12], [0.17, 0.93, 0.14], [0.15, 1.0, 0.16], [0.23, 0.92, 0.18], [0.42, 0.8, 0.22], [0.56, 0.62, 0.34], [0.58, 0.5, 0.5]], 0.011, tubeM, 40);
+  // 소변줄은 바지 허리(왼쪽 옆구리 앞)에서 나와 침대 옆으로 내려간다
+  const foleyOk = tube([[0.15, 0.975, -0.25], [0.26, 0.965, -0.2], [0.38, 0.84, -0.12], [0.5, 0.66, 0.1], [0.57, 0.5, 0.5]], 0.011, tubeM, 40);
+  const foleyKink = tube([[0.15, 0.975, -0.25], [0.2, 0.97, -0.21], [0.19, 1.03, -0.19], [0.26, 0.955, -0.17], [0.38, 0.84, -0.12], [0.5, 0.66, 0.1], [0.57, 0.5, 0.5]], 0.011, tubeM, 40);
   bed.add(foleyOk, foleyKink);
   const kinkMark = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.007, 8, 20), std(0xff8a1f, { emissive: 0x663300 }));
-  kinkMark.position.set(0.17, 0.95, 0.15); kinkMark.rotation.y = Math.PI / 2; bed.add(kinkMark);
+  kinkMark.position.set(0.19, 1.0, -0.19); kinkMark.rotation.y = Math.PI / 2; bed.add(kinkMark);
 
   // 소변주머니 (눈금 라벨 + 소변 수위): 간호사가 서 있는 발쪽에서 보이도록 앞면이 +z를 향함
   const bagGroup = new THREE.Group(); bagGroup.position.set(0.58, 0.3, 0.5); bed.add(bagGroup);
@@ -356,7 +357,7 @@ export function buildPatient() {
       const m = g.scene; m.scale.setScalar(1.06); m.rotation.y = Math.PI / 2; m.position.y = 0.53;
       bed.add(m); bedHW.visible = false;
       backrest = new THREE.Group(); backrest.visible = false; bed.add(backrest);
-      const wedge = rbox(0.72, 0.66, 0.1, std(0xdfe2ee, { roughness: 0.75 }), 0.04); wedge.position.set(0, 0.31, -0.215); backrest.add(wedge);
+      const wedge = rbox(0.72, 0.66, 0.1, std(0xdfe2ee, { roughness: 0.75 }), 0.04); wedge.position.set(0, 0.33, -0.31); backrest.add(wedge);
     }));
     // 수액 폴대 + 수액백
     tasks.push(Promise.all([loadGLB('pole.glb'), loadGLB('bag.glb')]).then(([pg, bg]) => {
@@ -378,7 +379,7 @@ export function buildPatient() {
     // 환자 (남편 모델)
     tasks.push(loadMan(new URL('man.glb', ASSET_URL).href, { gown: qs.get('clothes') !== '1' }).then((m) => {
       man = m; manGroup = new THREE.Group(); manGroup.scale.setScalar(0.9); manGroup.add(m.mesh); bed.add(manGroup);
-      patient.visible = false; hipY = MATTRESS_TOP + 0.135;
+      patient.visible = false; hipY = MATTRESS_TOP + 0.15;
       // 정맥주사 부위: 오른 손등 (소매가 아래팔을 덮고 있어서)
       const hf = new THREE.Group(); hf.position.set(-0.235, 0, 0); hf.quaternion.copy(HQ(+1)); m.bones.rElbow.add(hf);
       const site = new THREE.Group(); site.position.set(0, -0.085, 0.036); site.scale.setScalar(0.7); hf.add(site);
@@ -398,7 +399,7 @@ export function buildPatient() {
     B.pelvis.rotation.set(-Math.PI / 2, 0, 0);
     const bend = (cur.torso + Math.PI / 2) / 2;
     B.spine1.rotation.set(bend, 0, 0); B.spine2.rotation.set(bend, 0, torsoPivot.rotation.z);
-    const tilt = 0.3 * Math.min(1, Math.max(0, (cur.a - 0.12) / 0.63));
+    const tilt = 0.14 * Math.min(1, Math.max(0, (cur.a - 0.12) / 0.63));
     B.neck.rotation.set(tilt * 0.5, 0, 0);
     B.head.rotation.set(head.rotation.x + tilt * 0.5, head.rotation.y, 0);
     B.jaw.rotation.set(jaw.rotation.x * 0.15, 0, 0);
