@@ -2,6 +2,7 @@
 // 좌표 규칙: 간호사 시작 위치 (0, 0, 0.9)에서 -z 방향을 봄, 침대 머리는 -z 벽, 환자 오른쪽 = -x.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
 export const ROOM = { w: 4.6, d: 5.0, h: 2.7, zMin: -2.5, zMax: 2.5 };
 
@@ -128,6 +129,47 @@ export function buildRoom() {
     closet.add(front);
     closet.add(box(CDm + 0.03, 0.04, CWm + 0.03, mat(0xbfb095, { roughness: 0.7 }), 0.0, CHm / 2 - 0.02, 0)); // 윗면 몰딩
     g.add(closet);
+  }
+
+  // 보호자용 소파 — 옷장 옆, 왼쪽 벽
+  {
+    const sofa = new THREE.Group(); sofa.name = 'sofa';
+    const vinyl = mat(0x4d6870, { roughness: 0.55 });
+    const vinylDk = mat(0x3f565d, { roughness: 0.6 });
+    const rb = (w2, h2, d2, m, x, y, z, r = 0.04) => { const o = new THREE.Mesh(new RoundedBoxGeometry(w2, h2, d2, 4, r), m); o.position.set(x, y, z); sofa.add(o); return o; };
+    const SW = 1.6, SD = 0.88;
+    rb(SD, 0.2, SW, vinylDk, 0, 0.2, 0, 0.03); // 하부 프레임
+    rb(SD - 0.2, 0.17, SW / 2 - 0.1, vinyl, 0.09, 0.39, -SW / 4 + 0.0, 0.06); // 좌석 쿠션 2
+    rb(SD - 0.2, 0.17, SW / 2 - 0.1, vinyl, 0.09, 0.39, SW / 4 + 0.0, 0.06);
+    rb(0.2, 0.46, SW - 0.3, vinyl, -SD / 2 + 0.12, 0.58, 0, 0.07); // 등받이
+    rb(0.16, 0.26, SW / 2 - 0.1, vinyl, -SD / 2 + 0.3, 0.55, -SW / 4, 0.06); // 등 쿠션
+    rb(0.16, 0.26, SW / 2 - 0.1, vinyl, -SD / 2 + 0.3, 0.55, SW / 4, 0.06);
+    rb(SD - 0.04, 0.2, 0.14, vinylDk, 0, 0.5, -SW / 2 + 0.07, 0.05); // 팔걸이
+    rb(SD - 0.04, 0.2, 0.14, vinylDk, 0, 0.5, SW / 2 - 0.07, 0.05);
+    [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(([a, b2]) => { const leg = box(0.05, 0.1, 0.05, mat(0x2a2d30), a * (SD / 2 - 0.06), 0.05, b2 * (SW / 2 - 0.06)); sofa.add(leg); });
+    sofa.position.set(-w / 2 + 0.025 + SD / 2 + 0.01, 0, -0.55);
+    g.add(sofa);
+  }
+
+  // 천장 매달린 TV — 환자 정면(발치 쪽), 화면은 침대를 향함
+  {
+    const tv = new THREE.Group(); tv.name = 'ceilingTV';
+    const metalM = mat(0xb9bec2, { roughness: 0.4, metalness: 0.3 });
+    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.55, 16), metalM); rod.position.set(0, h - 0.275, 0.1); tv.add(rod);
+    tv.add(box(0.2, 0.03, 0.2, metalM, 0, h - 0.015, 0.1)); // 천장 플랜지
+    tv.add(box(0.12, 0.1, 0.14, metalM, 0, h - 0.58, 0.07)); // 하단 브라켓
+    const tvBody = new THREE.Mesh(new RoundedBoxGeometry(1.1, 0.66, 0.06, 4, 0.02), mat(0x15181b, { roughness: 0.5 })); tvBody.position.set(0, h - 0.68, 0); tv.add(tvBody);
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 600;
+    const c = cv.getContext('2d');
+    const gr = c.createLinearGradient(0, 0, 1024, 600); gr.addColorStop(0, '#0b1018'); gr.addColorStop(1, '#16202c');
+    c.fillStyle = gr; c.fillRect(0, 0, 1024, 600);
+    c.fillStyle = 'rgba(120,150,190,0.10)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(520, 0); c.lineTo(180, 600); c.lineTo(0, 600); c.fill(); // 반사광
+    c.fillStyle = 'rgba(180,200,225,0.35)'; c.font = '28px sans-serif'; c.textAlign = 'center'; c.fillText('병실 TV · 대기 화면', 512, 310);
+    const stex = new THREE.CanvasTexture(cv); stex.colorSpace = THREE.SRGBColorSpace; stex.anisotropy = 4;
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.04, 0.6), new THREE.MeshBasicMaterial({ map: stex, toneMapped: false }));
+    scr.rotation.y = Math.PI; scr.position.set(0, h - 0.68, -0.032); tv.add(scr);
+    tv.position.set(0, 0, 2.05);
+    g.add(tv);
   }
 
   // 활력징후 모니터 화면(캔버스): 측정 전에는 '--'

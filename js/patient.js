@@ -344,6 +344,8 @@ export function buildPatient() {
   const ASSET_URL = new URL('../assets/', import.meta.url);
   const qs = new URLSearchParams(location.search);
   let man = null; let manGroup = null; let backrest = null; let glbBags = false;
+  let cuffObj = null; let cuffHose = null; let cuffHoseSrc = null; let hoseT = 0;
+  const MON_PORT = new THREE.Vector3(1.22, 1.22, -0.16); // 활력징후 모니터 옆면 포트 (root 좌표)
   const HQ = (side) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), side > 0 ? -Math.PI / 2 : Math.PI / 2); // 팔을 아래로 늘어뜨리는 회전
   const qSh = new THREE.Quaternion(); const qEl = new THREE.Quaternion(); const eul = new THREE.Euler();
   const handLoader = new GLTFLoader();
@@ -370,7 +372,7 @@ export function buildPatient() {
       const hookY = 1.80;
       const sP = 0.28; const pcx = 0.30 * sP; const pcy = 0.93; // 펌프 크기·위치 (모델 클램프가 -x쪽)
       const pumpIn = new THREE.Vector3(pcx + 0.23 * sP, pcy + 0.92 * sP, -0.01);
-      [[-0.27, 0.38], [0.25, 0.34]].forEach(([x, sc], i) => {
+      [[0.22, 0.4]].forEach(([x, sc], i) => {
         const b = bg.scene.clone(true); b.scale.setScalar(sc);
         const y = hookY - 0.93 * sc; b.position.set(x, y, 0); pole.add(b);
         const luerY = y - 0.93 * sc;
@@ -398,6 +400,15 @@ export function buildPatient() {
       // 정맥주사 부위: 오른 손등 (소매가 아래팔을 덮고 있어서)
       const hf = new THREE.Group(); hf.position.set(-0.235, 0, 0); hf.quaternion.copy(HQ(+1)); m.bones.rElbow.add(hf);
       const site = new THREE.Group(); site.position.set(0, -0.085, 0.036); site.scale.setScalar(0.7); hf.add(site);
+      // 혈압 커프: 왼쪽 위팔 (활력징후 모니터는 환자 왼쪽)
+      cuffObj = new THREE.Group();
+      const cuffM = std(0x2f6f9a, { roughness: 0.8 });
+      const cuffBody = new THREE.Mesh(new THREE.CylinderGeometry(0.076, 0.07, 0.15, 24, 1, true), cuffM); cuffBody.rotation.z = Math.PI / 2; cuffBody.material.side = THREE.DoubleSide; cuffObj.add(cuffBody);
+      const cuffEdge = new THREE.Mesh(new THREE.CylinderGeometry(0.0775, 0.0775, 0.012, 24, 1, true), std(0x1d4a68, { roughness: 0.8, side: THREE.DoubleSide })); cuffEdge.rotation.z = Math.PI / 2; cuffEdge.position.x = 0.07; cuffObj.add(cuffEdge);
+      const velcro = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.002, 0.05), std(0xd8dde0, { roughness: 1 })); velcro.position.set(0, 0.078, 0); cuffObj.add(velcro);
+      const cuffPort = new THREE.Object3D(); cuffPort.position.set(-0.03, 0.0, 0.075); cuffObj.add(cuffPort); cuffHoseSrc = cuffPort;
+      cuffObj.position.set(0.36, 0.0, 0.0); m.bones.lShoulder.add(cuffObj);
+      cuffHose = new THREE.Mesh(tubeGeo([[0, 0, 0], [0.1, 0, 0], [0.2, 0, 0]], 0.006), std(0x2b2f33, { roughness: 0.6 })); root.add(cuffHose);
       const put = (o, x, y, z) => { o.position.set(x, y, z); site.add(o); };
       put(blood, 0, 0, 0); put(smear, 0.012, -0.035, -0.004); put(gauze, 0, 0, 0.006); put(tape, 0, 0, 0.007);
       put(film, 0, -0.015, 0.006); put(hub, 0, -0.025, 0.02); put(ivPort, 0, -0.025, 0.035);
@@ -464,10 +475,11 @@ export function buildPatient() {
     const amp = 0.25 + e * 0.75;
     const calm = s.emotion <= 3.5 || s.posture === 'lying';
     const pointing = s.started && !s.done.has('stopIV');
-    const rT = pointing ? -1.15 : calm ? -0.12 : -0.5 + Math.sin(t * 3.1) * 0.35 * amp;
+    const hallu = s.hallucinating && !pointing;
+    const rT = pointing ? -1.15 : hallu ? -1.5 + Math.sin(t * 2.6) * 0.3 : calm ? -0.12 : -0.5 + Math.sin(t * 3.1) * 0.35 * amp;
     rArm.shoulder.rotation.x += (rT - rArm.shoulder.rotation.x) * k;
-    rArm.elbow.rotation.x += ((pointing ? -0.45 : -0.2) - rArm.elbow.rotation.x) * k;
-    rArm.shoulder.rotation.z += ((s.hallucinating ? 0.5 + Math.sin(t * 5) * 0.4 * amp : -ARM_OUT) - rArm.shoulder.rotation.z) * k;
+    rArm.elbow.rotation.x += ((pointing ? -0.45 : hallu ? -0.35 : -0.2) - rArm.elbow.rotation.x) * k;
+    rArm.shoulder.rotation.z += ((hallu ? -(0.5 + Math.sin(t * 3.4) * 0.22) : -ARM_OUT) - rArm.shoulder.rotation.z) * k;
     const lT = calm ? -0.08 : -0.35 + Math.sin(t * 4.3) * 0.18 * amp;
     lArm.shoulder.rotation.x += (lT - lArm.shoulder.rotation.x) * k;
     lArm.elbow.rotation.x += ((calm ? -0.1 : -0.6) - lArm.elbow.rotation.x) * k;
@@ -499,6 +511,17 @@ export function buildPatient() {
     if (s.urineFlowing) urineLevel = Math.min(0.15, urineLevel + dt * 0.006); else urineLevel = 0.02;
     urine.scale.y = urineLevel * 1.6;
     urine.position.y = -0.14 + (urineLevel * 1.6) / 2;
+
+    if (cuffHose && cuffHoseSrc) {
+      hoseT += dt;
+      if (hoseT > 0.08) {
+        hoseT = 0; cuffHoseSrc.getWorldPosition(tmpV); root.worldToLocal(tmpV);
+        const a = tmpV.clone(); const b = MON_PORT;
+        const m1 = a.clone().lerp(b, 0.35); m1.y = Math.min(a.y, b.y) - 0.18;
+        const m2 = a.clone().lerp(b, 0.75); m2.y = Math.min(a.y, b.y) - 0.1;
+        cuffHose.geometry.dispose(); cuffHose.geometry = tubeGeo([a, m1, m2, b], 0.006, 24);
+      }
+    }
 
     // 수액: 펌프 표시·튜브·점적
     if (pumpState !== s.ivRunning) { pumpState = s.ivRunning; drawPump(pumpState); ledM.color.set(pumpState ? 0x40ff80 : 0xff4a3a); }
