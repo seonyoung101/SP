@@ -199,9 +199,9 @@ export function applyGownLook(material, { gown = true } = {}) {
           diffuseColor.rgb = mix(diffuseColor.rgb, sockC, shoeM);
           // 출혈: 오른 손등 정맥주사 부위에서 소매로 번지고, 아래로 흘러 옆구리·오른 허벅지까지 젖는다
           float bl = uBlood;
-          float sArm = bloodSpot(vObjPos, vec3(-0.80, 0.47, 0.0), vec3(0.62, 0.9, 0.9), mix(0.015, 0.18, bl), bl);
-          float sRib = bloodSpot(vObjPos, vec3(-0.21, 0.18, 0.05), vec3(1.0, 0.8, 1.2), mix(0.005, 0.12, smoothstep(0.30, 1.0, bl)), smoothstep(0.30, 0.5, bl) * bl);
-          float sLeg = bloodSpot(vObjPos, vec3(-0.13, -0.18, 0.06), vec3(1.2, 0.7, 1.2), mix(0.005, 0.1, smoothstep(0.5, 1.0, bl)), smoothstep(0.5, 0.65, bl) * bl);
+          float sArm = bloodSpot(vObjPos, vec3(-0.80, 0.47, 0.0), vec3(0.62, 0.9, 0.9), mix(0.009, 0.104, bl), bl);
+          float sRib = bloodSpot(vObjPos, vec3(-0.21, 0.18, 0.05), vec3(1.0, 0.8, 1.2), mix(0.003, 0.07, smoothstep(0.30, 1.0, bl)), smoothstep(0.30, 0.5, bl) * bl);
+          float sLeg = bloodSpot(vObjPos, vec3(-0.13, -0.18, 0.06), vec3(1.2, 0.7, 1.2), mix(0.003, 0.058, smoothstep(0.5, 1.0, bl)), smoothstep(0.5, 0.65, bl) * bl);
           float bs = clamp(max(sArm, max(sRib, sLeg)), 0.0, 1.0) * mix(0.55, 1.0, vCloth);
           float core = smoothstep(0.55, 1.0, bs);
           vec3 wet = mix(vec3(0.62, 0.10, 0.12), vec3(0.30, 0.01, 0.03), core) * (0.75 + 0.5 * lum);
