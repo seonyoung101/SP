@@ -296,6 +296,22 @@ export function buildPatient() {
   // ============================================================ 수액 폴대·펌프
   const pole = new THREE.Group(); pole.position.set(-0.86, 0, 0.1); root.add(pole);
   const poleHW = new THREE.Group(); pole.add(poleHW); // GLB 폴대·수액백이 로드되면 숨기는 절차적 부품
+  // 낙상주의 표지: 폴대 중간(펌프 위)에 고리로 걸어 둔다 (정면 = +z, 펌프와 같은 방향)
+  {
+    const SW = 0.15; const SH = SW * 451 / 320; const SY = 1.46; const SZ = 0.03;
+    const sign = new THREE.Group(); sign.position.set(0, SY, SZ); pole.add(sign);
+    const tex = new THREE.TextureLoader().load(new URL('../assets/fall-sign.png', import.meta.url).href);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const front = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.5, roughness: 0.6 }));
+    sign.add(front);
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), new THREE.MeshStandardMaterial({ map: tex, transparent: true, alphaTest: 0.5, roughness: 0.6, color: 0xd8c000 }));
+    back.rotation.y = Math.PI; back.position.z = -0.002; sign.add(back);
+    // 표지 위 구멍을 지나 폴대를 감는 고리
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.026, 0.0035, 8, 24), metal);
+    ring.rotation.x = Math.PI / 2; ring.position.set(0, SH / 2 - 0.012, -SZ); sign.add(ring);
+    const strap = new THREE.Mesh(new THREE.CylinderGeometry(0.0035, 0.0035, 0.03, 8), metal);
+    strap.rotation.x = Math.PI / 2; strap.position.set(0, SH / 2 - 0.012, -SZ / 2); sign.add(strap);
+  }
   const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 1.85, 12), metal); stand.position.y = 0.95; poleHW.add(stand);
   for (let i = 0; i < 5; i++) {
     const arm = new THREE.Group(); arm.rotation.y = (i / 5) * Math.PI * 2; poleHW.add(arm);
