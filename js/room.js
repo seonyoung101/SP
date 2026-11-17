@@ -36,6 +36,27 @@ export function buildRoom() {
 
   // 문 (오른쪽 뒤)
   g.add(box(0.05, 2.05, 0.95, mat(0x8a9a9c), w / 2 - 0.03, 1.025, 1.2));
+  // 문 위 피난구 유도등 (초록 바탕 + 달리는 사람 픽토그램). 밤에도 보이도록 조명 영향을 받지 않는 재질로 그린다
+  {
+    const S = 256; const cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#12b866'; c.fillRect(0, 0, S, S);
+    c.fillStyle = '#f4fff8'; c.fillRect(70, 26, 150, 204); // 열린 문
+    c.fillStyle = '#12b866'; c.beginPath(); c.moveTo(70, 26); c.lineTo(70, 230); c.lineTo(40, 230); c.lineTo(40, 26); c.fill(); // 문틀 쪽 여백
+    c.fillStyle = '#12b866'; c.strokeStyle = '#12b866'; c.lineCap = 'round'; c.lineJoin = 'round';
+    c.save(); c.translate(128, 128); c.scale(1.22, 1.22); c.translate(-128, -132);
+    c.beginPath(); c.arc(128, 62, 17, 0, 7); c.fill(); // 머리
+    c.lineWidth = 22; c.beginPath(); c.moveTo(124, 90); c.lineTo(140, 138); c.stroke(); // 몸통
+    c.lineWidth = 18;
+    c.beginPath(); c.moveTo(126, 98); c.lineTo(98, 126); c.moveTo(130, 98); c.lineTo(168, 112); c.stroke(); // 팔
+    c.beginPath(); c.moveTo(140, 138); c.lineTo(112, 186); c.lineTo(88, 206); c.moveTo(140, 138); c.lineTo(172, 160); c.lineTo(190, 156); c.stroke(); // 다리
+    c.restore();
+    const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+    const SZ = 0.3; const sy = 2.33, sz = 1.2;
+    g.add(box(0.06, SZ + 0.04, SZ + 0.04, mat(0xc9cfd1, { roughness: 0.6 }), w / 2 - 0.055, sy, sz));
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(SZ, SZ), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    face.rotation.y = -Math.PI / 2; face.position.set(w / 2 - 0.0865, sy, sz); g.add(face); // 방 안쪽(-x)을 향함
+  }
 
   // 보호자 침상/의자, 협탁
   g.add(box(0.5, 0.5, 0.5, mat(0x5b7a8a), 1.7, 0.25, -0.6)); // 보호자 의자
@@ -63,9 +84,35 @@ export function buildRoom() {
       c.fillStyle = '#eef1f1'; c.beginPath(); c.arc(cx, 92, 31, 0, 7); c.fill();
       c.fillStyle = '#333'; c.beginPath(); c.arc(cx - 10, 92, 5, 0, 7); c.arc(cx + 10, 92, 5, 0, 7); c.fill();
     };
-    [76, 168, 260, 352].forEach(plug);
+    [62, 158].forEach(plug); // 220V 콘센트 2구
     c.fillStyle = '#6b7476'; c.font = 'bold 20px sans-serif'; c.textAlign = 'center';
-    c.fillText('220V', 214, 170);
+    c.fillText('220V', 110, 170);
+    // 낙상주의 표지: 침대에서 떨어지는 사람 그림 + 문구 (직접 그린 단순 픽토그램)
+    {
+      const X = 214, Y = 30, PW2 = 228, PH2 = 150;
+      c.fillStyle = '#fbfcfc'; rr(X, Y, PW2, PH2, 12); c.fill();
+      c.strokeStyle = '#b9c1c3'; c.lineWidth = 3; c.stroke();
+      c.lineCap = 'round'; c.lineJoin = 'round';
+      // 침대(옆모습)
+      c.strokeStyle = '#3d4648'; c.lineWidth = 4;
+      c.beginPath(); c.moveTo(X + 16, Y + 52); c.lineTo(X + 16, Y + 112); c.moveTo(X + 16, Y + 96); c.lineTo(X + 88, Y + 96); c.moveTo(X + 88, Y + 96); c.lineTo(X + 88, Y + 112); c.stroke();
+      c.lineWidth = 6; c.beginPath(); c.moveTo(X + 16, Y + 84); c.lineTo(X + 78, Y + 84); c.stroke();
+      // 떨어지는 사람(빨강)
+      c.strokeStyle = '#c0392b'; c.fillStyle = '#c0392b'; c.lineWidth = 5;
+      c.beginPath(); c.arc(X + 92, Y + 52, 9, 0, 7); c.fill();
+      c.beginPath(); c.moveTo(X + 86, Y + 66); c.lineTo(X + 76, Y + 90); c.lineTo(X + 98, Y + 104); c.lineTo(X + 100, Y + 128); // 몸통·다리
+      c.moveTo(X + 84, Y + 70); c.lineTo(X + 104, Y + 76); // 팔
+      c.stroke();
+      // 충격 표시
+      c.lineWidth = 3; [[X + 70, Y + 132, X + 62, Y + 142], [X + 82, Y + 136, X + 80, Y + 148], [X + 116, Y + 134, X + 126, Y + 142]].forEach(([x1, y1, x2, y2]) => { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); });
+      // 문구
+      c.fillStyle = '#c0392b'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center';
+      c.fillText('낙상주의', X + 168, Y + 62);
+      c.fillStyle = '#c0392b'; c.fillRect(X + 126, Y + 74, 84, 3);
+      c.fillStyle = '#4b5557'; c.font = '13px sans-serif';
+      c.fillText('낙상 위험 환자', X + 168, Y + 98); c.fillText('침상 난간을 올려 주세요', X + 168, Y + 118);
+      c.textAlign = 'center'; c.lineCap = 'butt';
+    }
     // 조명 스위치
     c.fillStyle = '#cfd6d8'; rr(458, 50, 92, 84, 10); c.fill();
     [470, 506].forEach((x) => { c.fillStyle = '#f7f9f9'; rr(x, 58, 32, 68, 6); c.fill(); c.strokeStyle = '#aab3b5'; c.lineWidth = 2; c.stroke(); });
