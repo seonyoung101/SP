@@ -241,8 +241,11 @@ export function buildPatient() {
   // ============================================================ Foley·소변주머니
   const tubeM = std(0xe7eef1, { transparent: true, opacity: 0.85, roughness: 0.3 });
   // 소변줄은 바지 허리(왼쪽 옆구리 앞)에서 나와 침대 옆으로 내려간다
-  const foleyOk = tube([[0.15, 0.975, -0.25], [0.26, 0.965, -0.2], [0.38, 0.84, -0.12], [0.52, 0.66, 0.1], [0.67, 0.52, 0.5]], 0.011, tubeM, 40);
-  const foleyKink = tube([[0.15, 0.975, -0.25], [0.2, 0.97, -0.21], [0.19, 1.03, -0.19], [0.26, 0.955, -0.17], [0.38, 0.84, -0.12], [0.52, 0.66, 0.1], [0.67, 0.52, 0.5]], 0.011, tubeM, 40);
+  const FOLEY_TAIL = [[0.38, 0.84, -0.12], [0.52, 0.66, 0.1], [0.67, 0.52, 0.5]]; // 허리 쪽 → 소변백 유입관 (GLB 소변백이 로드되면 끝점을 바꾼다)
+  const foleyPts = (tail) => [[0.15, 0.975, -0.25], [0.26, 0.965, -0.2], ...tail];
+  const foleyKinkPts = (tail) => [[0.15, 0.975, -0.25], [0.2, 0.97, -0.21], [0.19, 1.03, -0.19], [0.26, 0.955, -0.17], ...tail];
+  const foleyOk = tube(foleyPts(FOLEY_TAIL), 0.011, tubeM, 40);
+  const foleyKink = tube(foleyKinkPts(FOLEY_TAIL), 0.011, tubeM, 40);
   bed.add(foleyOk, foleyKink);
   const kinkMark = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.007, 8, 20), std(0xff8a1f, { emissive: 0x663300 }));
   kinkMark.position.set(0.19, 1.0, -0.19); kinkMark.rotation.y = Math.PI / 2; bed.add(kinkMark);
@@ -288,6 +291,7 @@ export function buildPatient() {
   const valveV = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.04, 10), white); valveV.position.set(-0.07, -BH / 2 - 0.018, 0.004); bagGroup.add(valveV);
   const valveH = new THREE.Mesh(new THREE.CylinderGeometry(0.0055, 0.0055, 0.05, 10), white); valveH.rotation.z = Math.PI / 2; valveH.position.set(-0.062, -BH / 2 - 0.036, 0.004); bagGroup.add(valveH);
   let urineLevel = 0.02;
+  let ubag = null; // GLB 소변백이 로드되면 { urine, floor, h(level) }
 
   // ============================================================ 수액 폴대·펌프
   const pole = new THREE.Group(); pole.position.set(-0.86, 0, 0.1); root.add(pole);
@@ -422,6 +426,44 @@ export function buildPatient() {
       pumpOut.set(pole.position.x + pcx + 0.24 * sP, pcy - 0.96 * sP, pole.position.z);
       lastEnd.set(1e9, 0, 0);
     }));
+    // 소변백: 걸이·유입관·배출구·표본채취구가 일체형인 2000 mL 모델. 절차형 소변주머니를 대체하고 Foley를 유입관 끝에 이어 준다
+    tasks.push(loadGLB('ubag.glb').then((g) => {
+      const S = 0.58; const C = [-0.11, 0.035, 0]; // 모델 몸통 중심(모델 좌표)과 배율. 몸통 높이 약 0.34 m
+      let src = null; g.scene.traverse((o) => { if (o.isMesh && !src) src = o; });
+      const geo = src.geometry; const pos = geo.attributes.position; const idx = geo.index.array;
+      // 몸통(반투명 비닐)과 나머지(걸이·관·클램프·배출구, 불투명)로 삼각형을 나눈다
+      const bodyI = []; const restI = [];
+      for (let i = 0; i < idx.length; i += 3) {
+        const a = idx[i], b = idx[i + 1], c = idx[i + 2];
+        const cx = (pos.getX(a) + pos.getX(b) + pos.getX(c)) / 3; const cy = (pos.getY(a) + pos.getY(b) + pos.getY(c)) / 3;
+        const inBody = cx < 0.062 && cy > -0.262 && cy < 0.33;
+        (inBody ? bodyI : restI).push(a, b, c);
+      }
+      const part = (list, mat) => {
+        const pg = new THREE.BufferGeometry();
+        for (const k of Object.keys(geo.attributes)) pg.setAttribute(k, geo.attributes[k]);
+        pg.setIndex(new THREE.BufferAttribute(new Uint16Array(list), 1));
+        return new THREE.Mesh(pg, mat);
+      };
+      const mBody = src.material.clone(); mBody.transparent = true; mBody.opacity = 0.5; mBody.depthWrite = false; mBody.side = THREE.DoubleSide; mBody.roughness = 0.35;
+      const mRest = src.material.clone(); mRest.side = THREE.DoubleSide;
+      const body = part(bodyI, mBody); body.renderOrder = 2;
+      const rest = part(restI, mRest);
+      // 몸통 안쪽의 소변(노란색): 수위에 따라 차오른다
+      const urine2 = rbox(0.24, 1, 0.06, std(0xe6c53a, { transparent: true, opacity: 0.9, roughness: 0.2, depthWrite: false }), 0.004);
+      urine2.position.x = -0.111; urine2.renderOrder = 1;
+      const inner = new THREE.Group(); inner.position.set(-C[0], -C[1], -C[2]); inner.add(urine2, body, rest);
+      const grp = new THREE.Group(); grp.position.copy(bagGroup.position); grp.scale.setScalar(S); grp.add(inner); bed.add(grp);
+      bagGroup.visible = false;
+      ubag = { urine: urine2, floor: -0.215, h: (lv) => 0.04 + ((lv * 1.6) / BH) * 0.42 };
+      // Foley: 유입관 끝(모델 좌표 (0.169, -0.292, 0))까지 위에서 내려와 연결
+      const end = [grp.position.x + S * (0.169 - C[0]), grp.position.y + S * (-0.292 - C[1]), grp.position.z];
+      const tail = [[0.38, 0.84, -0.12], [0.52, 0.66, 0.1], [end[0] - 0.05, end[1] + 0.3, end[2] - 0.2], [end[0] - 0.015, end[1] + 0.1, end[2] - 0.06], end];
+      foleyOk.geometry.dispose(); foleyOk.geometry = tubeGeo(foleyPts(tail), 0.011, 40);
+      foleyKink.geometry.dispose(); foleyKink.geometry = tubeGeo(foleyKinkPts(tail), 0.011, 40);
+      const joint = new THREE.Mesh(new THREE.CylinderGeometry(0.0135, 0.0135, 0.03, 12), std(0xf4f6f7, { roughness: 0.5 }));
+      joint.position.set(end[0], end[1] + 0.01, end[2]); bed.add(joint);
+    }));
     // 환자 (남편 모델)
     tasks.push(loadMan(new URL('man.glb', ASSET_URL).href, { gown: qs.get('clothes') !== '1' }).then((m) => {
       man = m; manGroup = new THREE.Group(); manGroup.scale.setScalar(0.9); manGroup.add(m.mesh); bed.add(manGroup);
@@ -538,8 +580,12 @@ export function buildPatient() {
     kinkMark.visible = s.kinked && s.done.has('assessBladder');
     tubeM.color.lerp(s.urineFlowing ? yellow : clear, k * 0.5);
     if (s.urineFlowing) urineLevel = Math.min(0.15, urineLevel + dt * 0.006); else urineLevel = 0.02;
-    urine.scale.y = urineLevel * 1.6;
-    urine.position.y = -BH / 2 + 0.01 + (urineLevel * 1.6) / 2;
+    if (ubag) {
+      const h = ubag.h(urineLevel); ubag.urine.scale.y = h; ubag.urine.position.y = ubag.floor + h / 2;
+    } else {
+      urine.scale.y = urineLevel * 1.6;
+      urine.position.y = -BH / 2 + 0.01 + (urineLevel * 1.6) / 2;
+    }
 
     if (cuffHose && cuffHoseSrc) {
       hoseT += dt;
