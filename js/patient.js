@@ -404,7 +404,7 @@ export function buildPatient() {
   let bloodSite = null; // 오른 손등 정맥주사 부위 (GLB 환자가 로드되면 지정)
   let bloodMat = null;
   const fixedStains = [ // 환자 오른쪽(-x) 엉덩이·허벅지 옆 시트: [x, z, 크기, 나타나는 번짐 정도]
-    [addStain(-0.29, 0.02, 0.38, 0, 0.3, 1.5), 0.0], [addStain(-0.26, 0.26, 0.42, 1, 2.2, 1.7), 0.3], [addStain(-0.31, 0.5, 0.34, 2, 0.9, 1.4), 0.5], [addStain(-0.28, 0.72, 0.28, 1, 1.6, 1.3), 0.7],
+    [addStain(-0.29, 0.02, 0.19, 0, 0.3, 1.5), 0.0], [addStain(-0.27, 0.26, 0.21, 1, 2.2, 1.7), 0.3], [addStain(-0.31, 0.5, 0.17, 2, 0.9, 1.4), 0.5], [addStain(-0.28, 0.72, 0.14, 1, 1.6, 1.3), 0.7],
   ];
 
   // ============================================================ 상태
@@ -643,7 +643,7 @@ export function buildPatient() {
           dripT = 0; bloodSite.getWorldPosition(tmpV); bed.worldToLocal(tmpV);
           if (Math.abs(tmpV.x) < 0.42 && tmpV.z > -0.9 && tmpV.z < 0.95 && tmpV.y > y0 && tmpV.y < y0 + 1.2) {
             const dst = sheetStains[3 + (dripN % 6)] || addStain(0, 0, 1, dripN);
-            const sz = 0.07 + Math.random() * 0.06;
+            const sz = 0.035 + Math.random() * 0.03;
             dst.shown = 1; dst.m.visible = true; dst.m.rotation.z = Math.random() * 6;
             dst.m.position.set(tmpV.x, y0 + 0.0012 * (3 + (dripN % 6)), tmpV.z); dst.m.scale.setScalar(sz);
             dripN++;
