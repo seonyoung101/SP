@@ -376,6 +376,37 @@ export function buildPatient() {
   bugs.position.set(1.7, 2.45, -1.05); // root 기준 (월드 x 1.7, y 2.45, z -2.35)
   bugs.visible = false; root.add(bugs);
 
+  // ============================================================ 출혈이 시트에 번지는 자국
+  // 데칼: 진한 핏덩이 + 둘레로 스며든 연한 분홍 얼룩 (불규칙한 모양, 시트 위에 납작하게 깔린다)
+  const stainTexs = [0, 1, 2].map((seed) => {
+    const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d');
+    let r = 1234 + seed * 777; const rnd = () => { r = (r * 16807) % 2147483647; return r / 2147483647; };
+    const blob = (x, y, rad, a0, col) => {
+      const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+      gr.addColorStop(0, `rgba(${col},${a0})`); gr.addColorStop(0.6, `rgba(${col},${a0 * 0.75})`); gr.addColorStop(1, `rgba(${col},0)`);
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, rad, 0, 7); g.fill();
+    };
+    for (let i = 0; i < 9; i++) blob(128 + (rnd() - 0.5) * 70, 128 + (rnd() - 0.5) * 70, 55 + rnd() * 40, 0.32, '196,64,70'); // 스며든 가장자리
+    for (let i = 0; i < 7; i++) blob(128 + (rnd() - 0.5) * 46, 128 + (rnd() - 0.5) * 46, 32 + rnd() * 26, 0.7, '150,18,26');
+    for (let i = 0; i < 4; i++) blob(128 + (rnd() - 0.5) * 24, 128 + (rnd() - 0.5) * 24, 20 + rnd() * 14, 0.9, '88,6,14'); // 가운데 진한 핏덩이
+    for (let i = 0; i < 6; i++) { const a = rnd() * 6.28; const d = 70 + rnd() * 40; blob(128 + Math.cos(a) * d, 128 + Math.sin(a) * d, 6 + rnd() * 8, 0.8, '140,14,22'); } // 튄 방울
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  });
+  const stainMat = (i) => new THREE.MeshStandardMaterial({ map: stainTexs[i % 3], transparent: true, depthWrite: false, roughness: 0.35, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
+  const sheetStains = []; // { m, size, grow, at }
+  let sheetY = null;
+  function addStain(x, z, size, i, rot = 0, ar = 1) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), stainMat(i));
+    m.rotation.set(-Math.PI / 2, 0, rot); m.position.set(x, 0, z); m.renderOrder = 3; m.visible = false; bed.add(m);
+    const st = { m, size, ar, shown: 0 }; sheetStains.push(st); return st;
+  }
+  let bloodAmt = 0.45; let wasBleeding = false; let dripT = 0; let dripN = 0;
+  let bloodSite = null; // 오른 손등 정맥주사 부위 (GLB 환자가 로드되면 지정)
+  let bloodMat = null;
+  const fixedStains = [ // 환자 오른쪽(-x) 엉덩이·허벅지 옆 시트: [x, z, 크기, 나타나는 번짐 정도]
+    [addStain(-0.29, 0.02, 0.38, 0, 0.3, 1.5), 0.0], [addStain(-0.26, 0.26, 0.42, 1, 2.2, 1.7), 0.3], [addStain(-0.31, 0.5, 0.34, 2, 0.9, 1.4), 0.5], [addStain(-0.28, 0.72, 0.28, 1, 1.6, 1.3), 0.7],
+  ];
+
   // ============================================================ 상태
   let talk = 0; let blink = 0; let nextBlink = 2;
   let bedY = 0; const railY = [0, 0];
@@ -408,6 +439,12 @@ export function buildPatient() {
     tasks.push(loadGLB('bed.glb').then((g) => {
       const m = g.scene; m.scale.setScalar(1.06); m.rotation.y = Math.PI / 2; m.position.y = 0.53;
       bed.add(m); bedHW.visible = false;
+      try { // 매트리스 윗면 높이(침대 좌표): 위에서 아래로 쏜 광선으로 잰다
+        root.updateMatrixWorld(true);
+        const rc = new THREE.Raycaster(bed.localToWorld(new THREE.Vector3(-0.25, 2.5, 0.3)), new THREE.Vector3(0, -1, 0));
+        const hit = rc.intersectObject(m, true)[0];
+        if (hit) sheetY = bed.worldToLocal(hit.point.clone()).y;
+      } catch (e) { /* 실패하면 MATTRESS_TOP 사용 */ }
       backrest = new THREE.Group(); backrest.visible = false; bed.add(backrest);
       const wedge = rbox(0.72, 0.66, 0.1, std(0xdfe2ee, { roughness: 0.75 }), 0.04); wedge.position.set(0, 0.33, -0.31); backrest.add(wedge);
     }));
@@ -498,6 +535,7 @@ export function buildPatient() {
       cuffObj.position.set(0.17, -0.045, -0.012); cuffObj.rotation.z = -0.26; m.bones.lShoulder.add(cuffObj);
       cuffHose = new THREE.Mesh(tubeGeo([[0, 0, 0], [0.1, 0, 0], [0.2, 0, 0]], 0.006), std(0x2b2f33, { roughness: 0.6 })); root.add(cuffHose);
       const put = (o, x, y, z) => { o.position.set(x, y, z); site.add(o); };
+      bloodSite = site; bloodMat = m.mesh.material;
       put(blood, 0, 0, 0); put(smear, 0.012, -0.035, -0.004); put(gauze, 0, 0, 0.006); put(tape, 0, 0, 0.007);
       put(film, 0, -0.015, 0.006); put(hub, 0, -0.025, 0.02); put(ivPort, 0, -0.025, 0.035);
     }));
@@ -586,6 +624,34 @@ export function buildPatient() {
 
     if (man) driveMan(dt, s, k);
 
+    // 출혈이 옷·시트에 번진다: 처음부터 어느 정도 젖어 있고(피 묻은 오른팔), 출혈이 계속되는 동안 점점 번진다. 지혈해도 젖은 자국은 남는다
+    if (s.bleeding && !wasBleeding) { bloodAmt = 0.45; sheetStains.forEach((st) => { st.shown = 0; st.m.visible = false; }); dripN = 0; }
+    wasBleeding = s.bleeding;
+    if (s.bleeding) bloodAmt = Math.min(1, bloodAmt + dt * 0.012);
+    if (bloodMat && bloodMat.userData.blood) bloodMat.userData.blood.value = bloodAmt;
+    {
+      const y0 = (sheetY != null ? sheetY : MATTRESS_TOP + 0.01) + 0.004;
+      fixedStains.forEach(([st, at], i) => {
+        const want = Math.max(0, Math.min(1, (bloodAmt - at) / (1 - at + 0.15)));
+        st.shown += (want - st.shown) * Math.min(1, dt * 1.5);
+        st.m.visible = st.shown > 0.02; { const k2 = Math.max(0.01, st.size * (0.35 + 0.65 * st.shown)); st.m.scale.set(k2, k2 * st.ar, 1); } st.m.position.y = y0 + i * 0.0006;
+      });
+      // 손에서 시트 위로 떨어진 핏방울 자국 (손이 침대 위에 있을 때만)
+      if (s.bleeding && bloodSite) {
+        dripT += dt;
+        if (dripT > 1.6) {
+          dripT = 0; bloodSite.getWorldPosition(tmpV); bed.worldToLocal(tmpV);
+          if (Math.abs(tmpV.x) < 0.42 && tmpV.z > -0.9 && tmpV.z < 0.95 && tmpV.y > y0 && tmpV.y < y0 + 1.2) {
+            const dst = sheetStains[3 + (dripN % 6)] || addStain(0, 0, 1, dripN);
+            const sz = 0.07 + Math.random() * 0.06;
+            dst.shown = 1; dst.m.visible = true; dst.m.rotation.z = Math.random() * 6;
+            dst.m.position.set(tmpV.x, y0 + 0.0012 * (3 + (dripN % 6)), tmpV.z); dst.m.scale.setScalar(sz);
+            dripN++;
+          }
+        }
+      }
+    }
+
     // 출혈·거즈·필름
     blood.visible = s.bleeding; smear.visible = s.bleeding;
     if (s.bleeding) blood.scale.y = 1.8 + Math.sin(t * 6) * 0.1;
@@ -637,5 +703,5 @@ export function buildPatient() {
     }
   }
 
-  return { group: root, update, speak, ready, parts: { rArm, lArm }, get man() { return man; } };
+  return { group: root, update, speak, ready, parts: { rArm, lArm }, get man() { return man; }, get bloodAmt() { return bloodAmt; }, set bloodAmt(v) { bloodAmt = v; } };
 }

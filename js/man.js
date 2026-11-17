@@ -157,13 +157,29 @@ export function applyGownLook(material, { gown = true } = {}) {
   if (material.metalnessMap) { material.metalnessMap = null; }
   if (material.roughnessMap) { material.roughnessMap = null; }
   material.needsUpdate = true;
+  material.userData.blood = { value: 0 }; // 0~1: 출혈이 옷에 번진 정도 (patient.js가 갱신)
   if (!gown) return;
   material.onBeforeCompile = (sh) => {
+    sh.uniforms.uBlood = material.userData.blood;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float cloth; varying float vCloth; varying vec3 vObjPos;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvCloth = cloth; vObjPos = position;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying float vCloth; varying vec3 vObjPos;')
+      .replace('#include <common>', `#include <common>
+        varying float vCloth; varying vec3 vObjPos; uniform float uBlood; float gBloodS = 0.0;
+        float bh(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+        float bn(vec3 p) {
+          vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(mix(bh(i), bh(i + vec3(1,0,0)), f.x), mix(bh(i + vec3(0,1,0)), bh(i + vec3(1,1,0)), f.x), f.y),
+                     mix(mix(bh(i + vec3(0,0,1)), bh(i + vec3(1,0,1)), f.x), mix(bh(i + vec3(0,1,1)), bh(i + vec3(1,1,1)), f.x), f.y), f.z);
+        }
+        // 한 군데의 번진 핏자국: 중심·크기 배율·번짐 정도(0~1)
+        float bloodSpot(vec3 p, vec3 c, vec3 sc, float R, float amt) {
+          float nz = bn(p * 22.0) * 0.6 + bn(p * 55.0) * 0.4;
+          float d = length((p - c) * sc) + (nz - 0.5) * R * 0.55;
+          return (1.0 - smoothstep(R * 0.55, R, d)) * smoothstep(0.0, 0.08, amt);
+        }`)
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n roughnessFactor = mix(roughnessFactor, 0.3, gBloodS * 0.85);')
       .replace('#include <map_fragment>', `#include <map_fragment>
         {
           float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
@@ -181,6 +197,16 @@ export function applyGownLook(material, { gown = true } = {}) {
           float shoeM = 1.0 - smoothstep(-0.835, -0.805, vObjPos.y);
           vec3 sockC = vec3(0.86, 0.88, 0.9) * (0.9 + 0.5 * (lum - 0.08));
           diffuseColor.rgb = mix(diffuseColor.rgb, sockC, shoeM);
+          // 출혈: 오른 손등 정맥주사 부위에서 소매로 번지고, 아래로 흘러 옆구리·오른 허벅지까지 젖는다
+          float bl = uBlood;
+          float sArm = bloodSpot(vObjPos, vec3(-0.80, 0.47, 0.0), vec3(0.62, 0.9, 0.9), mix(0.03, 0.36, bl), bl);
+          float sRib = bloodSpot(vObjPos, vec3(-0.21, 0.18, 0.05), vec3(1.0, 0.8, 1.2), mix(0.01, 0.24, smoothstep(0.30, 1.0, bl)), smoothstep(0.30, 0.5, bl) * bl);
+          float sLeg = bloodSpot(vObjPos, vec3(-0.13, -0.18, 0.06), vec3(1.2, 0.7, 1.2), mix(0.01, 0.2, smoothstep(0.5, 1.0, bl)), smoothstep(0.5, 0.65, bl) * bl);
+          float bs = clamp(max(sArm, max(sRib, sLeg)), 0.0, 1.0) * mix(0.55, 1.0, vCloth);
+          float core = smoothstep(0.55, 1.0, bs);
+          vec3 wet = mix(vec3(0.62, 0.10, 0.12), vec3(0.30, 0.01, 0.03), core) * (0.75 + 0.5 * lum);
+          diffuseColor.rgb = mix(diffuseColor.rgb, wet, bs * 0.92);
+          gBloodS = bs;
         }`);
   };
 }

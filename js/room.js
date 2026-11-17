@@ -141,6 +141,19 @@ export function buildRoom() {
     const face = new THREE.Mesh(new THREE.PlaneGeometry(PW, PH), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0 }));
     face.position.set(0, 1.55, -d / 2 + 0.0655);
     g.add(face);
+    // 패널 위·아래 조명: 위쪽 띠등은 아래로, 아래쪽 띠등은 위로 패널 면을 비춘다 (항상 켜져 있는 야간 보조등)
+    const stripM = new THREE.MeshBasicMaterial({ color: 0xfff1d6 });
+    const zS = -d / 2 + 0.085;
+    [1, -1].forEach((dir) => {
+      const yS = 1.55 + dir * (PH / 2 + 0.035);
+      const strip = box(PW * 0.96, 0.016, 0.03, stripM, 0, yS, zS); g.add(strip);
+      const hood = box(PW * 0.98, 0.026, 0.045, mat(0xc9d0d2, { roughness: 0.5 }), 0, yS + dir * 0.016, zS + 0.004); g.add(hood);
+      for (const x of [-0.42, 0.42]) { // 좌우에서 패널 면을 훑어 비추는 스포트라이트
+        const sp = new THREE.SpotLight(0xfff0d8, 0.55, 2.2, 1.15, 1.0, 1.2);
+        sp.position.set(x, yS - dir * 0.0, zS + 0.38);
+        sp.target.position.set(x * 0.7, 1.55 - dir * 0.06, -d / 2 + 0.0655); g.add(sp, sp.target);
+      }
+    });
   }
 
   // 환자 오른쪽(왼쪽 벽, 머리 쪽 모서리)의 옷장 — 단순 가구 (캔버스 질감)
