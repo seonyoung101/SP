@@ -453,7 +453,8 @@ export function buildPatient() {
       const urine2 = rbox(0.24, 1, 0.06, std(0xe6c53a, { transparent: true, opacity: 0.9, roughness: 0.2, depthWrite: false }), 0.004);
       urine2.position.x = -0.111; urine2.renderOrder = 1;
       const inner = new THREE.Group(); inner.position.set(-C[0], -C[1], -C[2]); inner.add(urine2, body, rest);
-      const grp = new THREE.Group(); grp.position.copy(bagGroup.position); grp.scale.setScalar(S); grp.add(inner); bed.add(grp);
+      // 걸이가 침대 난간 하단 봉(x 0.5, y 0.54)에 걸리도록 위치를 잡는다
+      const grp = new THREE.Group(); grp.position.set(0.5, 0.316, 0.5); grp.scale.setScalar(S); grp.add(inner); bed.add(grp);
       bagGroup.visible = false;
       ubag = { urine: urine2, floor: -0.215, h: (lv) => 0.04 + ((lv * 1.6) / BH) * 0.42 };
       // Foley: 유입관 끝(모델 좌표 (0.169, -0.292, 0))까지 위에서 내려와 연결
